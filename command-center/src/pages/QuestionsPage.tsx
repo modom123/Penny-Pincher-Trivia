@@ -11,6 +11,18 @@ type Question = {
   time_limit_seconds: number;
 };
 
+type QuestionDraft = {
+  id: string;
+  question_text: string;
+  options: Record<string, string>;
+  correct_option: string;
+  difficulty_level: number;
+  category: string | null;
+  status: string;
+  generated_by: string;
+  created_at: string;
+};
+
 const emptyForm = {
   question_id: null as string | null,
   question_text: '',
@@ -26,10 +38,16 @@ const emptyForm = {
 
 export default function QuestionsPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [drafts, setDrafts] = useState<QuestionDraft[]>([]);
   const [filter, setFilter] = useState('');
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [genCategory, setGenCategory] = useState('');
+  const [genRoundStart, setGenRoundStart] = useState(1);
+  const [genRoundEnd, setGenRoundEnd] = useState(10);
+  const [genBusy, setGenBusy] = useState(false);
+  const [genMessage, setGenMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -38,11 +56,63 @@ export default function QuestionsPage() {
       .order('difficulty_level', { ascending: true })
       .limit(200);
     if (!error && data) setQuestions(data as Question[]);
+
+    const { data: draftData } = await supabase
+      .from('question_drafts')
+      .select('*')
+      .eq('status', 'pending_review')
+      .order('created_at', { ascending: false });
+    if (draftData) setDrafts(draftData as QuestionDraft[]);
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // "Trivia Alchemist": requests AI-drafted questions for staff review. Never
+  // writes to the live question bank directly - see promote/reject below.
+  async function generateDrafts() {
+    setGenBusy(true);
+    setGenMessage(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-questions', {
+        body: { category: genCategory || undefined, roundStart: genRoundStart, roundEnd: genRoundEnd },
+      });
+      if (error) throw error;
+      setGenMessage(`Drafted ${data.drafted} question(s)${data.skipped ? `, skipped ${data.skipped} malformed` : ''}. Review below.`);
+      await load();
+    } catch (err) {
+      setGenMessage(`Error: ${(err as Error).message}`);
+    } finally {
+      setGenBusy(false);
+    }
+  }
+
+  async function promoteDraft(id: string) {
+    setBusy(true);
+    try {
+      const { error } = await supabase.rpc('promote_question_draft', { p_draft_id: id });
+      if (error) throw error;
+      await load();
+    } catch (err) {
+      setGenMessage(`Error: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function rejectDraft(id: string) {
+    setBusy(true);
+    try {
+      const { error } = await supabase.rpc('reject_question_draft', { p_draft_id: id });
+      if (error) throw error;
+      await load();
+    } catch (err) {
+      setGenMessage(`Error: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function editQuestion(q: Question) {
     setForm({
@@ -147,6 +217,55 @@ export default function QuestionsPage() {
           )}
           {message && <p style={{ marginTop: 12 }}>{message}</p>}
         </form>
+      </div>
+
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>Trivia Alchemist (AI drafts)</h3>
+        <p style={{ color: '#9a9aa5', fontSize: 13 }}>
+          Generates draft questions for review - nothing is added to the live game until you approve it below. Requires
+          <code> ANTHROPIC_API_KEY</code> set as an Edge Function secret.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 10 }}>
+          <input placeholder="Category (optional)" value={genCategory} onChange={(e) => setGenCategory(e.target.value)} />
+          <input type="number" min={1} max={100} placeholder="From round" value={genRoundStart} onChange={(e) => setGenRoundStart(Number(e.target.value))} />
+          <input type="number" min={1} max={100} placeholder="To round" value={genRoundEnd} onChange={(e) => setGenRoundEnd(Number(e.target.value))} />
+          <button onClick={generateDrafts} disabled={genBusy}>
+            {genBusy ? 'Drafting...' : 'Generate drafts'}
+          </button>
+        </div>
+        {genMessage && <p style={{ marginTop: 12 }}>{genMessage}</p>}
+
+        {drafts.length > 0 && (
+          <table style={{ marginTop: 16 }}>
+            <thead>
+              <tr>
+                <th>Round</th>
+                <th>Question</th>
+                <th>Correct</th>
+                <th>Category</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {drafts.map((d) => (
+                <tr key={d.id}>
+                  <td>{d.difficulty_level}</td>
+                  <td>{d.question_text}</td>
+                  <td>{d.correct_option}</td>
+                  <td>{d.category}</td>
+                  <td style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={() => promoteDraft(d.id)} disabled={busy}>
+                      Approve
+                    </button>
+                    <button className="danger" onClick={() => rejectDraft(d.id)} disabled={busy}>
+                      Reject
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       <div className="card">

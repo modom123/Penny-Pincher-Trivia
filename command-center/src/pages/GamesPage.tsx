@@ -26,6 +26,7 @@ export default function GamesPage() {
   const [newMode, setNewMode] = useState<GameMode>('original_escalator');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.from('games').select('*').order('created_at', { ascending: false });
@@ -64,6 +65,41 @@ export default function GamesPage() {
           : 'Payout distributed.'
       );
       await load();
+    } catch (err) {
+      setMessage(`Error: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // "Hype Machine": drafts a post-game announcement from real payout data for
+  // staff to review and post themselves. This never posts anywhere on its own -
+  // no social API keys are wired up, and auto-publishing a real player's
+  // identity + winnings without their consent is a privacy/ToS question worth
+  // a human decision, not blind automation.
+  async function draftAnnouncement(gameId: string, mode: GameMode) {
+    setBusy(true);
+    setAnnouncement(null);
+    try {
+      const { data: topPayout } = await supabase
+        .from('wallet_ledger')
+        .select('user_id, amount_cents')
+        .eq('game_id', gameId)
+        .eq('entry_type', 'payout')
+        .order('amount_cents', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!topPayout) {
+        setMessage('No payout found for this game yet.');
+        return;
+      }
+
+      const { data: profile } = await supabase.from('profiles').select('username').eq('user_id', topPayout.user_id).single();
+
+      const amount = (topPayout.amount_cents / 100).toFixed(2);
+      const draft = `This game, @${profile?.username ?? 'a player'} turned a 1-cent entry into $${amount} in cash playing ${MODE_LABELS[mode]}. New game starting soon - can you pinch the penny? #PennyPincherTrivia`;
+      setAnnouncement(draft);
     } catch (err) {
       setMessage(`Error: ${(err as Error).message}`);
     } finally {
@@ -150,6 +186,11 @@ export default function GamesPage() {
                       </button>
                     </>
                   )}
+                  {g.status === 'completed' && (
+                    <button className="secondary" onClick={() => draftAnnouncement(g.game_id, g.mode)} disabled={busy}>
+                      Draft announcement
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -161,6 +202,18 @@ export default function GamesPage() {
           </tbody>
         </table>
       </div>
+
+      {announcement && (
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>Announcement draft</h3>
+          <p style={{ color: '#9a9aa5', fontSize: 13 }}>
+            Generated from real payout data - review before posting anywhere. Not auto-posted: no social API keys are
+            configured, and posting a real player's identity + winnings without their consent is a judgment call, not
+            something to automate blindly.
+          </p>
+          <textarea readOnly value={announcement} rows={3} />
+        </div>
+      )}
     </div>
   );
 }

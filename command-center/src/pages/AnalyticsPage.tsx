@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
+type GameMode = 'original_escalator' | 'streak_saver' | 'milestone_booster';
+const MODE_LABELS: Record<GameMode, string> = {
+  original_escalator: 'Flat-Rate Escalator',
+  streak_saver: 'Streak Saver',
+  milestone_booster: 'Milestone Booster',
+};
+
+type ModeStats = { mode: GameMode; games: number; players: number; revenueCents: number };
+
 export default function AnalyticsPage() {
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -10,6 +19,7 @@ export default function AnalyticsPage() {
     totalCheatFlags: 0,
     suspendedAccounts: 0,
   });
+  const [modeStats, setModeStats] = useState<ModeStats[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -30,6 +40,39 @@ export default function AnalyticsPage() {
         totalCheatFlags: totalCheatFlags ?? 0,
         suspendedAccounts: suspendedAccounts ?? 0,
       });
+
+      // "Campaign Commander" decision support: which mode is driving the most
+      // play and revenue, for a human to act on manually. This build does NOT
+      // auto-shift real ad budgets across Meta/Google Ads - that moves real
+      // money without a human approving it, which is out of scope for
+      // automation here. See README's Workforce section.
+      const { data: games } = await supabase.from('games').select('game_id, mode, admin_revenue_pool_cents');
+      const { data: playerGames } = await supabase.from('player_game_stats').select('game_id');
+
+      const modeByGameId = new Map<string, GameMode>();
+      const gamesByMode = new Map<GameMode, { games: number; revenueCents: number }>();
+      (games ?? []).forEach((g: { game_id: string; mode: GameMode; admin_revenue_pool_cents: number }) => {
+        modeByGameId.set(g.game_id, g.mode);
+        const existing = gamesByMode.get(g.mode) ?? { games: 0, revenueCents: 0 };
+        existing.games += 1;
+        existing.revenueCents += g.admin_revenue_pool_cents;
+        gamesByMode.set(g.mode, existing);
+      });
+
+      const playersByMode = new Map<GameMode, number>();
+      (playerGames ?? []).forEach((pg: { game_id: string }) => {
+        const mode = modeByGameId.get(pg.game_id);
+        if (mode) playersByMode.set(mode, (playersByMode.get(mode) ?? 0) + 1);
+      });
+
+      setModeStats(
+        (Object.keys(MODE_LABELS) as GameMode[]).map((mode) => ({
+          mode,
+          games: gamesByMode.get(mode)?.games ?? 0,
+          revenueCents: gamesByMode.get(mode)?.revenueCents ?? 0,
+          players: playersByMode.get(mode) ?? 0,
+        }))
+      );
     })();
   }, []);
 
@@ -67,6 +110,35 @@ export default function AnalyticsPage() {
         time, retention cohorts) would need either scheduled aggregate rollups or a dedicated analytics store - worth
         scoping separately once there's real traffic to analyze.
       </p>
+
+      <div className="card" style={{ marginTop: 24 }}>
+        <h3 style={{ marginTop: 0 }}>Performance by game mode</h3>
+        <p style={{ color: '#9a9aa5', fontSize: 13 }}>
+          For deciding where to point marketing spend manually. This build does not auto-shift ad budgets across
+          Meta/Google Ads the way a fully autonomous "Campaign Commander" would - that moves real money without a human
+          approving it, which is intentionally out of scope for automation here.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Mode</th>
+              <th>Games</th>
+              <th>Player-Games</th>
+              <th>Platform Revenue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {modeStats.map((m) => (
+              <tr key={m.mode}>
+                <td>{MODE_LABELS[m.mode]}</td>
+                <td>{m.games}</td>
+                <td>{m.players}</td>
+                <td>${(m.revenueCents / 100).toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

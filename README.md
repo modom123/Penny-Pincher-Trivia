@@ -44,6 +44,26 @@ enter, the pot grows as players unlock rounds, and the top 3 scorers at round 10
   Privacy Policy/AML checklist - **not legal advice**, needs review by gaming/gambling
   counsel before publication (see `legal/00-READ-ME-FIRST.md`).
 
+## Game modes
+
+Set at game creation (`games.mode` enum), same underlying engine for all three:
+
+- **Flat-Rate Escalator** - round *N* costs *N* cents. The original design.
+- **Streak Saver** - a correct answer waives the *next* round's entry fee entirely;
+  a wrong answer resumes normal pricing. Average spend is lower, but "play free if
+  you're right" is a stronger virality hook.
+- **Milestone Booster** - flat per-tier pricing (Bronze 1-25 / Silver 26-50 / Gold
+  51-75 / Platinum 76-100), plus a platform-funded $5 bonus injected into the prize
+  pool at rounds 25/50/75. **Flagged in `legal/03-official-rules-DRAFT.md`**: a
+  platform-funded (not just entry-fee-funded) bonus may raise its own sweepstakes-
+  classification question - get counsel's sign-off before enabling this mode for real
+  money.
+
+**Sudden Death Overtime**: if 2+ players are tied for a top-3 finish at round 100,
+`payout_game` doesn't pay out - it opens overtime rounds (flat $1 fee, shrinking timer
+starting at 10s, restricted to the tied players only) until scores diverge, then pays
+out for real. The game-engine's `--watch` mode runs this loop automatically.
+
 ## Anti-cheat
 
 - The server's clock is the only source of truth for timing - `submit_answer` computes
@@ -52,6 +72,24 @@ enter, the pot grows as players unlock rounds, and the top 3 scorers at round 10
   `time_limit_seconds + 500ms`.
 - Answers faster than 300ms are flagged (`cheat_flags`); after 3 flags in one game, the
   player is disqualified from the prize pool (but can keep playing).
+- Rounds 80+ get a stricter 150ms bar and only need 2 flags to disqualify - answering a
+  high-difficulty, high-value question that fast is a much stronger bot signal than
+  doing it on an early round.
+
+## Workforce (AI-assisted operations)
+
+Modeled on a 6-role "autonomous AI employee" design doc, but scoped down deliberately:
+anything that moves real money or publishes a real player's identity does so with a
+human in the loop, not blind autonomy.
+
+| Role | What's built | Why scoped this way |
+|---|---|---|
+| **Game Director** | `game-engine --watch` polls for pending games and runs their full 100-round + Sudden Death Overtime loop automatically. | Purely mechanical - no money/identity decisions, safe to fully automate. |
+| **Fraud Sentinel** | Round-aware anti-cheat (see above), surfaced in the command center's Compliance page for staff review/action. | Flags for human review; doesn't auto-ban - a fast answer is a signal, not proof. |
+| **Ledger Master** | `Financials` page reconciliation check: verifies debits+bonuses == pool+cut and payouts == pool, to the cent. | Reconciliation is safe to automate (read-only math). Real Stripe payouts stay player-initiated via the existing withdraw flow - auto-pushing money out without a withdrawal request sidesteps the KYC/consent flow already built. |
+| **Trivia Alchemist** | `generate-questions` Edge Function drafts questions via an LLM into `question_drafts`; command center's Question Bank has a review/approve/reject UI. | Never writes to the live question bank directly - there's no automated fact-checking pass (would need a separate knowledge-base integration), so human review is the actual safety mechanism. |
+| **Hype Machine** | Command center's Games page drafts a post-game announcement from real payout data. | Draft only, not auto-posted - no social API keys are wired up, and publishing a real player's identity + winnings without their consent is a consent/ToS judgment call, not something to automate blindly. |
+| **Campaign Commander** | Analytics page shows revenue/volume per game mode. | Explicitly **not** automated - shifting real ad budgets across Meta/Google Ads is spending real money without human approval, which is out of scope here regardless of how confident an "optimizer" claims to be. |
 
 ## Setup
 
@@ -76,6 +114,8 @@ Set these in Supabase (Project Settings -> Edge Functions -> Secrets), then rede
 - `APP_PUBLIC_URL` (used for Stripe Checkout success/cancel redirect URLs)
 - `ADMIN_USER_IDS` (comma-separated Supabase auth user ids allowed to call
   `create-game`)
+- `ANTHROPIC_API_KEY` (used by `generate-questions` to draft trivia questions for
+  staff review - see "Workforce" below)
 
 Deploy functions with `supabase functions deploy <name>`.
 
