@@ -5,6 +5,7 @@ export type RoundStartPayload = {
   costCents: number;
   timeLimitSeconds: number;
   serverStartTimeMs: number;
+  isOvertime?: boolean;
 };
 
 export type RoundEndPayload = {

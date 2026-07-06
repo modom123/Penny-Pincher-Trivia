@@ -15,6 +15,7 @@ export default function GameScreen({ route, navigation }: Props) {
   const [purchased, setPurchased] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [lastResult, setLastResult] = useState<RoundEndPayload | null>(null);
+  const [streakFree, setStreakFree] = useState(false);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -63,11 +64,12 @@ export default function GameScreen({ route, navigation }: Props) {
 
   async function buyRound() {
     if (!round) return;
-    const { error } = await supabase.rpc('buy_round', { p_game_id: gameId, p_round_number: round.roundNumber });
+    const { data, error } = await supabase.rpc('buy_round', { p_game_id: gameId, p_round_number: round.roundNumber });
     if (error) {
       Alert.alert("Couldn't buy round", error.message);
       return;
     }
+    setStreakFree(Boolean(data?.streakFree));
     setPurchased(true);
   }
 
@@ -96,7 +98,8 @@ export default function GameScreen({ route, navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.roundLabel}>Round {round.roundNumber} / 100</Text>
+      {round.isOvertime && <Text style={styles.overtimeBanner}>SUDDEN DEATH OVERTIME</Text>}
+      <Text style={styles.roundLabel}>Round {round.roundNumber}{!round.isOvertime && ' / 100'}</Text>
       <Text style={styles.timer}>{secondsLeft}s</Text>
       <Text style={styles.question}>{round.questionText}</Text>
 
@@ -105,6 +108,8 @@ export default function GameScreen({ route, navigation }: Props) {
           <Text style={styles.buyButtonText}>Buy this round - {round.costCents}c</Text>
         </Pressable>
       )}
+
+      {purchased && streakFree && phase === 'open' && <Text style={styles.streakBadge}>FREE - streak bonus!</Text>}
 
       {purchased && phase === 'open' && (
         <View style={styles.options}>
@@ -132,7 +137,9 @@ export default function GameScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, backgroundColor: '#0f0f14' },
   waiting: { color: '#9a9aa5', fontSize: 16, textAlign: 'center', marginTop: 48 },
-  roundLabel: { color: '#9a9aa5', fontSize: 14, marginTop: 24 },
+  overtimeBanner: { color: '#ef4444', fontSize: 14, fontWeight: '800', marginTop: 24, letterSpacing: 1 },
+  roundLabel: { color: '#9a9aa5', fontSize: 14, marginTop: 8 },
+  streakBadge: { color: '#22c55e', fontWeight: '700', marginBottom: 12 },
   timer: { color: '#22c55e', fontSize: 40, fontWeight: '800', marginBottom: 16 },
   question: { color: '#fff', fontSize: 20, fontWeight: '700', marginBottom: 24 },
   buyButton: { backgroundColor: '#22c55e', borderRadius: 10, paddingVertical: 16 },

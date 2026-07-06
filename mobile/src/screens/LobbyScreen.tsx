@@ -6,12 +6,22 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import type { RootStackParamList } from '../types';
 
+type GameMode = 'original_escalator' | 'streak_saver' | 'milestone_booster';
+
 type Game = {
   game_id: string;
   status: string;
+  mode: GameMode;
   current_round: number;
   total_rounds: number;
   total_prize_pool_cents: number;
+  in_sudden_death: boolean;
+};
+
+const MODE_LABELS: Record<GameMode, string> = {
+  original_escalator: 'Flat-Rate Escalator',
+  streak_saver: 'Streak Saver',
+  milestone_booster: 'Milestone Booster',
 };
 
 export default function LobbyScreen() {
@@ -24,7 +34,7 @@ export default function LobbyScreen() {
     setRefreshing(true);
     const { data, error } = await supabase
       .from('games')
-      .select('game_id, status, current_round, total_rounds, total_prize_pool_cents')
+      .select('game_id, status, mode, current_round, total_rounds, total_prize_pool_cents, in_sudden_death')
       .in('status', ['pending', 'active'])
       .order('created_at', { ascending: false });
     if (!error && data) setGames(data);
@@ -58,9 +68,10 @@ export default function LobbyScreen() {
         ListEmptyComponent={<Text style={styles.empty}>No games running right now.</Text>}
         renderItem={({ item }) => (
           <Pressable style={styles.card} onPress={() => navigation.navigate('Game', { gameId: item.game_id })}>
+            <Text style={styles.cardMode}>{MODE_LABELS[item.mode]}</Text>
             <Text style={styles.cardTitle}>Round {item.current_round} / {item.total_rounds}</Text>
             <Text style={styles.cardSubtitle}>Prize pool: ${(item.total_prize_pool_cents / 100).toFixed(2)}</Text>
-            <Text style={styles.cardStatus}>{item.status.toUpperCase()}</Text>
+            <Text style={styles.cardStatus}>{item.in_sudden_death ? 'SUDDEN DEATH OVERTIME' : item.status.toUpperCase()}</Text>
           </Pressable>
         )}
       />
@@ -77,6 +88,7 @@ const styles = StyleSheet.create({
   walletLinkText: { color: '#22c55e', fontWeight: '700' },
   empty: { color: '#9a9aa5', textAlign: 'center', marginTop: 48 },
   card: { backgroundColor: '#1c1c24', borderRadius: 12, padding: 16, marginBottom: 12 },
+  cardMode: { color: '#22c55e', fontSize: 12, fontWeight: '700', marginBottom: 4 },
   cardTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
   cardSubtitle: { color: '#9a9aa5', marginTop: 4 },
   cardStatus: { color: '#22c55e', marginTop: 8, fontWeight: '700', fontSize: 12 },
