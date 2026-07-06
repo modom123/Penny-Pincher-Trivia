@@ -61,11 +61,9 @@ async function runGame(gameId) {
       console.log(`[game ${gameId}] round ${roundNumber} ended, correct=${result.correctOption}`);
 
       if (result.isFinalRound) {
-        const { data: payout, error: payoutError } = await supabase.rpc('payout_game', { p_game_id: gameId });
-        if (payoutError) throw new Error(`payout_game failed: ${payoutError.message}`);
-
-        await channel.send({ type: 'broadcast', event: 'game:completed', payload: payout });
-        console.log(`[game ${gameId}] completed, prize pool ${payout.totalPrizePoolCents}c distributed`);
+        // Blocks until the game actually pays out - runs Sudden Death Overtime
+        // rounds internally for as long as a tie persists.
+        await resolvePayoutOrOvertime(channel, gameId);
         break;
       }
 
@@ -80,17 +78,91 @@ async function runGame(gameId) {
   }
 }
 
-async function main() {
-  const gameIds = process.argv.slice(2);
-  if (gameIds.length === 0) {
-    console.error('Usage: node index.js <gameId> [gameId2 ...]');
-    process.exit(1);
+// Calls payout_game; if it reports a tie ("status: sudden_death"), runs
+// Sudden Death Overtime rounds - restricted to the tied players, flat premium
+// fee, shrinking timer - until scores diverge and a real payout happens.
+async function resolvePayoutOrOvertime(channel, gameId) {
+  let payout = await callPayoutGame(channel, gameId);
+
+  while (payout.status === 'sudden_death') {
+    console.log(`[game ${gameId}] tie at rank(s) ${payout.tiedRanks.join(', ')} - entering sudden death overtime`);
+    await channel.send({ type: 'broadcast', event: 'game:sudden_death', payload: payout });
+
+    const { data: round, error } = await supabase.rpc('start_sudden_death_round', { p_game_id: gameId });
+    if (error) throw new Error(`start_sudden_death_round failed: ${error.message}`);
+
+    await channel.send({ type: 'broadcast', event: 'round:start', payload: round });
+    console.log(`[game ${gameId}] overtime round ${round.roundNumber} started (${round.timeLimitSeconds}s)`);
+
+    await sleep(round.timeLimitSeconds * 1000 + LATE_ANSWER_GRACE_MS);
+
+    const { data: result, error: endError } = await supabase.rpc('end_round', {
+      p_game_id: gameId,
+      p_round_number: round.roundNumber,
+    });
+    if (endError) throw new Error(`end_round(overtime ${round.roundNumber}) failed: ${endError.message}`);
+
+    await channel.send({ type: 'broadcast', event: 'round:end', payload: result });
+    console.log(`[game ${gameId}] overtime round ${round.roundNumber} ended, correct=${result.correctOption}`);
+
+    payout = await callPayoutGame(channel, gameId);
   }
 
-  const results = await Promise.allSettled(gameIds.map(runGame));
+  return payout;
+}
+
+async function callPayoutGame(channel, gameId) {
+  const { data: payout, error } = await supabase.rpc('payout_game', { p_game_id: gameId });
+  if (error) throw new Error(`payout_game failed: ${error.message}`);
+
+  if (payout.status === 'completed') {
+    await channel.send({ type: 'broadcast', event: 'game:completed', payload: payout });
+    console.log(`[game ${gameId}] completed, prize pool ${payout.totalPrizePoolCents}c distributed`);
+  }
+  return payout;
+}
+
+// "Game Director" mode: polls the games table for pending games no one has
+// started yet and runs them automatically, so games don't need a human (or a
+// one-off script invocation) to kick each one off.
+const WATCH_POLL_MS = parseInt(process.env.WATCH_POLL_MS || '15000', 10);
+
+async function watchPendingGames() {
+  console.log(`[watch] polling for pending games every ${WATCH_POLL_MS}ms`);
+  const inFlight = new Set();
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      const { data: pending, error } = await supabase.from('games').select('game_id').eq('status', 'pending');
+      if (error) throw error;
+
+      for (const { game_id: gameId } of pending ?? []) {
+        if (inFlight.has(gameId)) continue;
+        inFlight.add(gameId);
+        console.log(`[watch] starting pending game ${gameId}`);
+        runGame(gameId)
+          .catch((err) => console.error(`[watch] game ${gameId} crashed:`, err))
+          .finally(() => inFlight.delete(gameId));
+      }
+    } catch (err) {
+      console.error('[watch] poll failed:', err.message);
+    }
+    await sleep(WATCH_POLL_MS);
+  }
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+  if (args.length === 0 || args[0] === '--watch') {
+    await watchPendingGames();
+    return;
+  }
+
+  const results = await Promise.allSettled(args.map(runGame));
   results.forEach((result, i) => {
     if (result.status === 'rejected') {
-      console.error(`[game ${gameIds[i]}] crashed:`, result.reason);
+      console.error(`[game ${args[i]}] crashed:`, result.reason);
     }
   });
   process.exit(results.some((r) => r.status === 'rejected') ? 1 : 0);

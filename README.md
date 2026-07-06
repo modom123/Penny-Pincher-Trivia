@@ -85,11 +85,16 @@ Deploy functions with `supabase functions deploy <name>`.
 cd game-engine
 cp .env.example .env   # fill in SUPABASE_SERVICE_ROLE_KEY
 npm install
-node index.js <gameId> [<gameId2> ...]
+node index.js --watch        # "Game Director": polls for pending games and runs them automatically
+node index.js <gameId> ...   # or run specific game(s) directly
 ```
 
-Create a game first (via the `create-game` Edge Function, as an allowlisted admin),
-then pass its `game_id` to the engine to run its 100-round loop.
+`--watch` mode (the default with no args) is real automation: it polls the `games`
+table for `status = 'pending'` rows and starts each one's 100-round loop itself, no
+human/script invocation needed per game - just create the game (via the command center
+or `create-game` Edge Function) and the engine picks it up. It also runs Sudden Death
+Overtime end-to-end when `payout_game` reports a tie: opens restricted overtime rounds,
+waits them out, and re-checks the tie after each one until it pays out for real.
 
 ### 4. Mobile app
 
