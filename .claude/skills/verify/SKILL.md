@@ -61,7 +61,9 @@ this is a real (if currently low-traffic) production project, not a
 throwaway sandbox. Delete order matters due to FKs: `cheat_flags` ->
 `player_answers` -> `wallet_ledger` -> `sudden_death_participants` ->
 `player_game_stats` -> `game_rounds` -> `games`, then `auth.users` (cascades
-`profiles`).
+`profiles`). If the test user acted as staff (called any `admin_*` RPC),
+also delete their `admin_audit_log` rows first - every admin action logs
+one, and it FKs to `auth.users`, so it'll block the user delete otherwise.
 
 ## After any migration touching grants
 
