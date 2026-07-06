@@ -1,0 +1,23 @@
+{
+  "name": "penny-pincher-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main.js",
+  "description": "Electron shell that runs the Penny Pincher game client (built with Expo/react-native-web) on Mac and Windows.",
+  "scripts": {
+    "build-web": "cd ../mobile && EXPO_OFFLINE=1 npx expo export --platform web --output-dir ../desktop/web-build",
+    "start": "npm run build-web && electron .",
+    "dist": "npm run build-web && electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^31.3.1",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.pennypincher.trivia.desktop",
+    "productName": "Penny Pincher",
+    "files": ["main.js", "preload.js", "web-build/**/*"],
+    "mac": { "category": "public.app-category.games" },
+    "win": { "target": "nsis" }
+  }
+}

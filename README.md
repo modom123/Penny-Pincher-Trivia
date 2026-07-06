@@ -30,6 +30,19 @@ enter, the pot grows as players unlock rounds, and the top 3 scorers at round 10
   admin game creation.
 - **Mobile app** (`mobile/`): Expo/React Native, using `@supabase/supabase-js` directly
   for auth, RPC calls, and Realtime.
+- **Desktop app** (`desktop/`): Electron shell around a `react-native-web` export of the
+  *same* mobile codebase - one game client, three targets (iOS/Android/desktop).
+- **Internal command center** (`command-center/`): React/Vite staff dashboard - game
+  creation/monitoring/force-payout, question bank CRUD, financial ledger browser,
+  compliance tools (anti-cheat review, account suspend, blocked-states config), support
+  tickets + manual wallet adjustments, and live analytics counts. Gated by a
+  `staff_roles`/`is_staff()` RBAC layer in Postgres (roles: admin/support/compliance/
+  content_editor), with every privileged action written to `admin_audit_log`.
+- **Marketing website** (`website/`): static landing page + hosted legal pages. No
+  gameplay.
+- **Legal/compliance** (`legal/`): compliance risk memo and draft ToS/Official Rules/
+  Privacy Policy/AML checklist - **not legal advice**, needs review by gaming/gambling
+  counsel before publication (see `legal/00-READ-ME-FIRST.md`).
 
 ## Anti-cheat
 
@@ -88,11 +101,46 @@ npm run start
 
 Supabase URL/publishable key are already wired in `app.json` (`expo.extra`).
 
+### 5. Desktop app
+
+```bash
+cd desktop
+npm install
+npm start   # builds a react-native-web export of mobile/ and launches Electron
+```
+
+See `desktop/README.md` for packaging/signing caveats (no code-signing configured yet).
+
+### 6. Internal command center
+
+```bash
+cd command-center
+cp .env.example .env   # Supabase URL + publishable key, same as mobile
+npm install
+npm run dev
+```
+
+Sign in requires a `staff_roles` row for that user (`admin`/`support`/`compliance`/
+`content_editor`) - grant one via SQL, since staff role assignment is intentionally not
+self-service:
+
+```sql
+insert into public.staff_roles (user_id, role) values ('<user-uuid>', 'admin');
+```
+
+### 7. Marketing website
+
+Static site, no build step - see `website/README.md`.
+
 ## Repo layout
 
 ```
 supabase/migrations/   Schema, RLS, Postgres functions (source of truth for the DB)
 supabase/functions/    Edge Functions (Stripe + admin game creation)
 game-engine/           Persistent worker driving the round timer + Realtime broadcast
-mobile/                Expo/React Native client
+mobile/                Expo/React Native client (iOS, Android, and web export)
+desktop/               Electron shell wrapping the mobile app's web export
+command-center/        Staff admin dashboard (React/Vite)
+website/               Marketing site + hosted legal pages
+legal/                 Compliance risk memo + draft legal documents
 ```
