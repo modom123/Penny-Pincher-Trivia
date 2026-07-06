@@ -64,6 +64,17 @@ Set at game creation (`games.mode` enum), same underlying engine for all three:
 starting at 10s, restricted to the tied players only) until scores diverge, then pays
 out for real. The game-engine's `--watch` mode runs this loop automatically.
 
+## Scoring
+
+Computed server-side in `submit_answer` (the server clock is authoritative, never the
+client's):
+
+- **Correct answer**: `round × 10` (base) `+` time bonus (milliseconds left on the
+  clock). Later rounds and faster answers are worth more.
+- **Wrong answer**: penalty of `−(round × 10)` — a wrong answer on round 80 costs far
+  more than on round 1, mirroring the reward. No time component on the penalty.
+- **Total score is floored at 0** — deductions can't push a player negative.
+
 ## Anti-cheat
 
 - The server's clock is the only source of truth for timing - `submit_answer` computes

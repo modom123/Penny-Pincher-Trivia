@@ -104,7 +104,11 @@ export default function GameScreen({ route, navigation }: Props) {
       return;
     }
     setPhase('answered');
-    Alert.alert(data.isCorrect ? 'Correct!' : 'Incorrect', `+${data.pointsAwarded} points`);
+    const delta = data.pointsAwarded >= 0 ? `+${data.pointsAwarded}` : `${data.pointsAwarded}`;
+    Alert.alert(
+      data.isCorrect ? 'Correct!' : 'Incorrect',
+      `${delta} points  ·  Total: ${data.newTotalScore}`
+    );
   }
 
   if (!round) {
