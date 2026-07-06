@@ -127,6 +127,20 @@ async function callPayoutGame(channel, gameId) {
 // one-off script invocation) to kick each one off.
 const WATCH_POLL_MS = parseInt(process.env.WATCH_POLL_MS || '15000', 10);
 
+// How often to purge the black-box ledger of entries older than 48h. Default
+// hourly. (If pg_cron is enabled, prefer scheduling purge_old_websocket_logs
+// there instead; this is the no-extension fallback.)
+const PURGE_INTERVAL_MS = parseInt(process.env.PURGE_INTERVAL_MS || '3600000', 10);
+let lastPurgeAt = 0;
+
+async function maybePurgeLogs() {
+  if (Date.now() - lastPurgeAt < PURGE_INTERVAL_MS) return;
+  lastPurgeAt = Date.now();
+  const { data, error } = await supabase.rpc('purge_old_websocket_logs');
+  if (error) console.error('[purge] purge_old_websocket_logs failed:', error.message);
+  else if (data > 0) console.log(`[purge] removed ${data} black-box log entries older than 48h`);
+}
+
 async function watchPendingGames() {
   console.log(`[watch] polling for pending games every ${WATCH_POLL_MS}ms`);
   const inFlight = new Set();
@@ -145,6 +159,8 @@ async function watchPendingGames() {
           .catch((err) => console.error(`[watch] game ${gameId} crashed:`, err))
           .finally(() => inFlight.delete(gameId));
       }
+
+      await maybePurgeLogs();
     } catch (err) {
       console.error('[watch] poll failed:', err.message);
     }

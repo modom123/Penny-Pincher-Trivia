@@ -16,7 +16,26 @@ export default function GameScreen({ route, navigation }: Props) {
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [lastResult, setLastResult] = useState<RoundEndPayload | null>(null);
   const [streakFree, setStreakFree] = useState(false);
+  const [regionBlocked, setRegionBlocked] = useState(false);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Geo-fence: verify the device location once when the game card opens, so the
+  // server has a fresh region on record before any buy-in. In production the
+  // `state` comes from the Radar.io/GeoComply SDK; here we send the device's
+  // best guess and let the server decide. The real enforcement is in buy_round.
+  useEffect(() => {
+    (async () => {
+      try {
+        // TODO: replace with the geo-vendor SDK's verified region + signed token.
+        const { data, error } = await supabase.functions.invoke('geo-check', {
+          body: { state: undefined, radarToken: undefined },
+        });
+        if (!error && data?.regionBlocked) setRegionBlocked(true);
+      } catch {
+        // Non-fatal here; buy_round enforces the hard block regardless.
+      }
+    })();
+  }, [gameId]);
 
   useEffect(() => {
     const channel = supabase.channel(`game:${gameId}`);
@@ -103,7 +122,16 @@ export default function GameScreen({ route, navigation }: Props) {
       <Text style={styles.timer}>{secondsLeft}s</Text>
       <Text style={styles.question}>{round.questionText}</Text>
 
-      {!purchased && phase === 'open' && (
+      {!purchased && phase === 'open' && regionBlocked && (
+        <View style={styles.blockedBox}>
+          <Text style={styles.blockedText}>
+            Penny Pincher cash games are currently unavailable in your region. You can still play our free daily practice
+            tracks!
+          </Text>
+        </View>
+      )}
+
+      {!purchased && phase === 'open' && !regionBlocked && (
         <Pressable style={styles.buyButton} onPress={buyRound}>
           <Text style={styles.buyButtonText}>Buy this round - {round.costCents}c</Text>
         </Pressable>
@@ -138,6 +166,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, backgroundColor: '#0f0f14' },
   waiting: { color: '#9a9aa5', fontSize: 16, textAlign: 'center', marginTop: 48 },
   overtimeBanner: { color: '#ef4444', fontSize: 14, fontWeight: '800', marginTop: 24, letterSpacing: 1 },
+  blockedBox: { backgroundColor: '#ef444422', borderRadius: 10, padding: 16 },
+  blockedText: { color: '#ef4444', fontSize: 15 },
   roundLabel: { color: '#9a9aa5', fontSize: 14, marginTop: 8 },
   streakBadge: { color: '#22c55e', fontWeight: '700', marginBottom: 12 },
   timer: { color: '#22c55e', fontSize: 40, fontWeight: '800', marginBottom: 16 },

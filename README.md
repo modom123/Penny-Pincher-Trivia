@@ -76,6 +76,29 @@ out for real. The game-engine's `--watch` mode runs this loop automatically.
   high-difficulty, high-value question that fast is a much stronger bot signal than
   doing it on an early round.
 
+## Go-live compliance layer
+
+Four operational areas required before real money / public app stores. The
+**enforcement lives in Postgres** so it can't be bypassed by a client; vendor
+integrations are pluggable webhook/config points. Full status map in
+[`docs/LAUNCH-CHECKLIST.md`](docs/LAUNCH-CHECKLIST.md).
+
+- **KYC**: `reserve_withdrawal` blocks any payout until `kyc_status = 'verified'`
+  and the player is 18+. `kyc-webhook` edge fn records vendor results
+  (Persona/Stripe Identity) via `apply_kyc_result`; staff can manually review in
+  the command center's Compliance page. Registration and deposits need only an
+  email — KYC gates *withdrawal*, not entry.
+- **Tax**: `payout_game` tracks `lifetime_winnings_cents`; `reserve_withdrawal`
+  locks withdrawals at $550 until the player confirms tax details (Stripe Tax's
+  W-9 flow → `confirm_tax_details`), keeping ahead of the $600 1099-MISC threshold.
+- **Geo-fencing**: `buy_round` blocks buy-ins from `platform_config.blocked_states`
+  (admin-editable in the command center) and from unverified locations. The
+  `geo-check` edge fn records the device's verified region (Radar.io/GeoComply).
+- **Black-box dispute ledger**: `websocket_logs` records every answer's
+  server-observed timing (48h retention, purged hourly by the game-engine). Support
+  staff pull a player's log in the command center's Dispute desk to adjudicate
+  "my answer didn't submit" disputes with the exact server-side timing.
+
 ## Workforce (AI-assisted operations)
 
 Modeled on a 6-role "autonomous AI employee" design doc, but scoped down deliberately:
@@ -116,6 +139,8 @@ Set these in Supabase (Project Settings -> Edge Functions -> Secrets), then rede
   `create-game`)
 - `ANTHROPIC_API_KEY` (used by `generate-questions` to draft trivia questions for
   staff review - see "Workforce" below)
+- `KYC_WEBHOOK_SECRET` (shared secret for the `kyc-webhook` receiver - Persona/Stripe Identity)
+- `RADAR_SECRET_KEY` (optional; anti-spoof location verification in `geo-check`)
 
 Deploy functions with `supabase functions deploy <name>`.
 
