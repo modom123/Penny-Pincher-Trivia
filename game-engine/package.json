@@ -1,0 +1,14 @@
+{
+  "name": "penny-pincher-game-engine",
+  "version": "1.0.0",
+  "description": "Persistent worker that drives the 100-round timer for a Penny Pincher game and broadcasts round state over Supabase Realtime. This is the one component that can't be serverless - Edge Functions can't hold a timer spanning tens of minutes.",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5"
+  }
+}

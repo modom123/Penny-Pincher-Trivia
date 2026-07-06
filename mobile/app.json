@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Penny Pincher",
+    "slug": "penny-pincher-trivia",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pennypincher.trivia"
+    },
+    "android": {
+      "package": "com.pennypincher.trivia"
+    },
+    "extra": {
+      "supabaseUrl": "https://pkvdthwqvjpxhqorfpub.supabase.co",
+      "supabaseAnonKey": "sb_publishable_kZ17EWaJ8fJy91jAOC-13A_NW5x3iqQ"
+    }
+  }
+}
