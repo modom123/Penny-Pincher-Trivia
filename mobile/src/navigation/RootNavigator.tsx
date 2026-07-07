@@ -7,6 +7,7 @@ import LobbyScreen from '../screens/LobbyScreen';
 import WalletScreen from '../screens/WalletScreen';
 import GameScreen from '../screens/GameScreen';
 import ResultsScreen from '../screens/ResultsScreen';
+import { theme } from '../theme';
 import type { RootStackParamList } from '../types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -18,7 +19,7 @@ export default function RootNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerStyle: { backgroundColor: '#0f0f14' }, headerTintColor: '#fff' }}>
+      <Stack.Navigator screenOptions={{ headerStyle: { backgroundColor: theme.bg }, headerTintColor: theme.text }}>
         {!session ? (
           <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />
         ) : (

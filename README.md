@@ -57,8 +57,26 @@ enter, the pot grows as players unlock rounds, and the top 3 scorers at round 10
   `subject_curation_status()`.
 - **Curator engine** (`question-curator/`): batch-generates the bank as *reviewable
   drafts* (never straight to live), idempotent/resumable, with dedup + shape validation.
+  `make-contest.js` is the lean per-tournament path (100 questions on demand → publish).
   See `question-curator/README.md`. Human approval via `promote_question_draft` is still
   the fact-checking step.
+- **Command center**: the Question Bank page shows per-subject **curation coverage**
+  (`subject_curation_status()`); the Games page can **publish a themed contest** from any
+  contest-ready subject (`admin_create_subject_contest` → `create_game_for_subject`).
+
+## Design & UI
+
+The mobile client follows the game-design brief: a midnight dark theme with Electric
+Emerald (money/growth) and Neon Gold (jackpot/top-3) accents, shared via
+`mobile/src/theme.ts`. Three core screens:
+
+- **Lobby** — Penny Wallet top bar (balance + quick deposit) and live game cards
+  (mode, subject, prize pool, round).
+- **Active Arena** (`GameScreen`) — live prize-pool header, 1–100 progress tracker,
+  question card with a shrinking 12-second countdown, micro-debit "Unlock Round N
+  ($0.42)" action, and emerald/crimson answer feedback.
+- **Climax** (`ResultsScreen`) — gold/silver/bronze podium for the top 3, then the full
+  payout list.
 
 ## Game modes
 
