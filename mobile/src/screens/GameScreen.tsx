@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet, Alert, Animated, ScrollView } from '
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
 import { theme, money } from '../theme';
+import ChatPanel from '../components/ChatPanel';
 import type { RootStackParamList, RoundStartPayload, RoundEndPayload, GameCompletedPayload } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Game'>;
@@ -26,6 +27,7 @@ export default function GameScreen({ route, navigation }: Props) {
   const [prizePoolCents, setPrizePoolCents] = useState(0);
   const [selected, setSelected] = useState<Option | null>(null);
   const [selectedCorrect, setSelectedCorrect] = useState<boolean | null>(null);
+  const [isSpectator, setIsSpectator] = useState(false);
   // Per-round outcome history for the progress tracker: 'correct' | 'incorrect'.
   const [history, setHistory] = useState<Record<number, 'correct' | 'incorrect'>>({});
 
@@ -66,6 +68,7 @@ export default function GameScreen({ route, navigation }: Props) {
         startCountdown(p);
         fetchPool(); // pool climbed from last round's buy-ins
         scrollTrackerTo(p.roundNumber);
+        detectSpectator(p);
       })
       .on('broadcast', { event: 'round:end' }, ({ payload }) => {
         setLastResult(payload as RoundEndPayload);
@@ -86,6 +89,23 @@ export default function GameScreen({ route, navigation }: Props) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId]);
+
+  // In Sudden Death Overtime only the tied finalists can play; everyone else is a
+  // spectator (chat + watch). Outside overtime, nobody is a spectator.
+  async function detectSpectator(p: RoundStartPayload) {
+    if (!p.isOvertime) {
+      setIsSpectator(false);
+      return;
+    }
+    const { data: u } = await supabase.auth.getUser();
+    const { data: part } = await supabase
+      .from('sudden_death_participants')
+      .select('user_id')
+      .eq('game_id', gameId)
+      .eq('user_id', u.user?.id ?? '')
+      .maybeSingle();
+    setIsSpectator(!part);
+  }
 
   async function fetchPool() {
     const { data } = await supabase
@@ -215,7 +235,7 @@ export default function GameScreen({ route, navigation }: Props) {
 
   if (!round) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, styles.content]}>
         <PrizeHeader prizePoolCents={prizePoolCents} pulse={poolPulse} />
         <Text style={styles.waiting}>Waiting for the next round to start…</Text>
       </View>
@@ -223,7 +243,7 @@ export default function GameScreen({ route, navigation }: Props) {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <PrizeHeader prizePoolCents={prizePoolCents} pulse={poolPulse} />
       {renderTracker()}
 
@@ -259,7 +279,7 @@ export default function GameScreen({ route, navigation }: Props) {
       )}
 
       {/* Micro-debit action state: primary button shows the entry toll */}
-      {!purchased && phase === 'open' && !regionBlocked && (
+      {!purchased && phase === 'open' && !regionBlocked && !isSpectator && (
         <Pressable style={styles.buyButton} onPress={buyRound}>
           <Text style={styles.buyButtonText}>{tollLabel}</Text>
         </Pressable>
@@ -283,7 +303,26 @@ export default function GameScreen({ route, navigation }: Props) {
       {phase === 'answered' && !lastResult && (
         <Text style={styles.waiting}>Answer locked in — waiting for the round to end…</Text>
       )}
-    </View>
+
+      {/* Sudden Death: spectators watch + chat; everyone sees the finalists' scores */}
+      {round.isOvertime && (
+        <>
+          {isSpectator && <Text style={styles.spectatorBanner}>👀 Spectating the finalists</Text>}
+          {lastResult?.leaderboard?.length ? (
+            <View style={styles.finalists}>
+              <Text style={styles.finalistsTitle}>FINALISTS</Text>
+              {lastResult.leaderboard.slice(0, 3).map((row, i) => (
+                <View key={row.userId} style={styles.finalistRow}>
+                  <Text style={styles.finalistName}>#{i + 1} Player {row.userId.slice(0, 4)}</Text>
+                  <Text style={styles.finalistScore}>{row.score} pts</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+          <ChatPanel gameId={gameId} />
+        </>
+      )}
+    </ScrollView>
   );
 }
 
@@ -299,8 +338,23 @@ function PrizeHeader({ prizePoolCents, pulse }: { prizePoolCents: number; pulse:
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, paddingTop: 56, backgroundColor: theme.bg },
+  container: { flex: 1, backgroundColor: theme.bg },
+  content: { padding: 20, paddingTop: 56, paddingBottom: 40 },
   waiting: { color: theme.textMuted, fontSize: 16, textAlign: 'center', marginTop: 48 },
+
+  spectatorBanner: { color: theme.gold, fontWeight: '800', fontSize: 14, marginTop: 8 },
+  finalists: {
+    backgroundColor: theme.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.border,
+    padding: 14,
+    marginTop: 12,
+  },
+  finalistsTitle: { color: theme.textMuted, fontSize: 10, fontWeight: '800', letterSpacing: 1.5, marginBottom: 8 },
+  finalistRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  finalistName: { color: theme.text, fontWeight: '700' },
+  finalistScore: { color: theme.gold, fontWeight: '800' },
 
   prizeHeader: {
     alignItems: 'center',

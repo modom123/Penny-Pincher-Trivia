@@ -12,7 +12,7 @@ const PODIUM = {
   3: { color: '#CD7F32', label: '3rd', height: 76, emoji: '🥉' },
 } as const;
 
-const shortId = (id: string) => `Player ${id.slice(0, 4)}`;
+const nameOf = (p: { username?: string; userId: string }) => p.username ?? `Player ${p.userId.slice(0, 4)}`;
 
 // The "Climax": final leaderboard. Top 3 rendered on a podium (gold/silver/bronze),
 // then the full payout list below.
@@ -38,7 +38,7 @@ export default function ResultsScreen({ route, navigation }: Props) {
             <View key={place} style={styles.podiumSlot}>
               <Text style={styles.podiumEmoji}>{meta.emoji}</Text>
               <View style={[styles.avatar, { borderColor: meta.color }]} />
-              <Text style={styles.podiumName} numberOfLines={1}>{shortId(p.userId)}</Text>
+              <Text style={styles.podiumName} numberOfLines={1}>{nameOf(p)}</Text>
               <Text style={[styles.podiumPrize, { color: meta.color }]}>{money(p.amountCents)}</Text>
               <View
                 style={[
@@ -62,7 +62,7 @@ export default function ResultsScreen({ route, navigation }: Props) {
         renderItem={({ item }) => (
           <View style={styles.row}>
             <Text style={styles.rowPlace}>#{item.place}</Text>
-            <Text style={styles.rowName}>{shortId(item.userId)}</Text>
+            <Text style={styles.rowName}>{nameOf(item)}</Text>
             <Text style={styles.rowScore}>{item.totalScore} pts</Text>
             <Text style={styles.rowAmount}>{money(item.amountCents)}</Text>
           </View>

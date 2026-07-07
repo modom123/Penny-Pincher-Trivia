@@ -19,7 +19,16 @@ export type GameCompletedPayload = {
   gameId: string;
   totalPrizePoolCents: number;
   adminRevenuePoolCents: number;
-  payouts: { userId: string; place: number; amountCents: number; totalScore: number }[];
+  payouts: { userId: string; username?: string; place: number; amountCents: number; totalScore: number }[];
+};
+
+export type ChatMessage = {
+  id: string;
+  game_id: string;
+  user_id: string;
+  username: string;
+  body: string;
+  created_at: string;
 };
 
 export type RootStackParamList = {
