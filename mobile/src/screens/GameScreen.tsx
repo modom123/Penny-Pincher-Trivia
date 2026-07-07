@@ -72,13 +72,17 @@ export default function GameScreen({ route, navigation }: Props) {
         setPhase('open');
         setLastResult(null);
         startCountdown(p);
-        fetchPool(); // pool climbed from last round's buy-ins
+        // Prefer the live pool broadcast in the round payload; fall back to a query.
+        if (typeof p.totalPrizePoolCents === 'number') updatePool(p.totalPrizePoolCents);
+        else fetchPool();
         scrollTrackerTo(p.roundNumber);
         detectSpectator(p);
       })
       .on('broadcast', { event: 'round:end' }, ({ payload }) => {
-        setLastResult(payload as RoundEndPayload);
+        const p = payload as RoundEndPayload;
+        setLastResult(p);
         setPhase('closed');
+        if (typeof p.totalPrizePoolCents === 'number') updatePool(p.totalPrizePoolCents);
         if (tickRef.current) clearInterval(tickRef.current);
       })
       .on('broadcast', { event: 'game:completed' }, ({ payload }) => {
