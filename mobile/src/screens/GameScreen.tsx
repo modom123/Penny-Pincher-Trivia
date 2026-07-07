@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Alert, Animated, ScrollView } from 'react-native';
+import type { StyleProp, ViewStyle } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
 import { theme, money } from '../theme';
@@ -205,7 +206,7 @@ export default function GameScreen({ route, navigation }: Props) {
         {Array.from({ length: 100 }, (_, i) => i + 1).map((n) => {
           const outcome = history[n];
           const isCurrent = n === current;
-          const dotStyle = [
+          const dotStyle: StyleProp<ViewStyle> = [
             styles.dot,
             outcome === 'correct' && styles.dotCorrect,
             outcome === 'incorrect' && styles.dotIncorrect,
