@@ -1,13 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Alert, Animated, ScrollView } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
+import { theme, money } from '../theme';
 import type { RootStackParamList, RoundStartPayload, RoundEndPayload, GameCompletedPayload } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Game'>;
 
 type Phase = 'waiting' | 'open' | 'answered' | 'closed';
+type Option = 'A' | 'B' | 'C' | 'D';
 
+// The "Active Arena": hyper-focused live 12-second round. Live prize-pool header,
+// a 1..100 progress tracker, the question card with a shrinking countdown bar,
+// four answer buttons that flip emerald/crimson on reveal, and a micro-debit
+// "Unlock Round N ($0.42)" primary action for broken streaks.
 export default function GameScreen({ route, navigation }: Props) {
   const { gameId } = route.params;
   const [round, setRound] = useState<RoundStartPayload | null>(null);
@@ -17,37 +23,49 @@ export default function GameScreen({ route, navigation }: Props) {
   const [lastResult, setLastResult] = useState<RoundEndPayload | null>(null);
   const [streakFree, setStreakFree] = useState(false);
   const [regionBlocked, setRegionBlocked] = useState(false);
-  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [prizePoolCents, setPrizePoolCents] = useState(0);
+  const [selected, setSelected] = useState<Option | null>(null);
+  const [selectedCorrect, setSelectedCorrect] = useState<boolean | null>(null);
+  // Per-round outcome history for the progress tracker: 'correct' | 'incorrect'.
+  const [history, setHistory] = useState<Record<number, 'correct' | 'incorrect'>>({});
 
-  // Geo-fence: verify the device location once when the game card opens, so the
-  // server has a fresh region on record before any buy-in. In production the
-  // `state` comes from the Radar.io/GeoComply SDK; here we send the device's
-  // best guess and let the server decide. The real enforcement is in buy_round.
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const barAnim = useRef(new Animated.Value(1)).current; // 1 -> 0 over the round
+  const poolPulse = useRef(new Animated.Value(1)).current;
+  const trackerRef = useRef<ScrollView | null>(null);
+
+  // Geo-fence: verify device location once when the arena opens (server records
+  // the region; buy_round is the hard enforcement).
   useEffect(() => {
     (async () => {
       try {
-        // TODO: replace with the geo-vendor SDK's verified region + signed token.
         const { data, error } = await supabase.functions.invoke('geo-check', {
           body: { state: undefined, radarToken: undefined },
         });
         if (!error && data?.regionBlocked) setRegionBlocked(true);
       } catch {
-        // Non-fatal here; buy_round enforces the hard block regardless.
+        /* non-fatal; buy_round enforces regardless */
       }
     })();
+    fetchPool();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId]);
 
   useEffect(() => {
     const channel = supabase.channel(`game:${gameId}`);
-
     channel
       .on('broadcast', { event: 'round:start' }, ({ payload }) => {
         const p = payload as RoundStartPayload;
         setRound(p);
         setPurchased(false);
+        setSelected(null);
+        setSelectedCorrect(null);
+        setStreakFree(false);
         setPhase('open');
         setLastResult(null);
         startCountdown(p);
+        fetchPool(); // pool climbed from last round's buy-ins
+        scrollTrackerTo(p.roundNumber);
       })
       .on('broadcast', { event: 'round:end' }, ({ payload }) => {
         setLastResult(payload as RoundEndPayload);
@@ -69,24 +87,52 @@ export default function GameScreen({ route, navigation }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId]);
 
+  async function fetchPool() {
+    const { data } = await supabase
+      .from('games')
+      .select('total_prize_pool_cents')
+      .eq('game_id', gameId)
+      .single();
+    if (data && typeof data.total_prize_pool_cents === 'number') updatePool(data.total_prize_pool_cents);
+  }
+
+  function updatePool(next: number) {
+    setPrizePoolCents((prev) => {
+      if (next > prev) {
+        // "tick upward" pulse when the jackpot grows
+        Animated.sequence([
+          Animated.timing(poolPulse, { toValue: 1.12, duration: 120, useNativeDriver: true }),
+          Animated.spring(poolPulse, { toValue: 1, useNativeDriver: true }),
+        ]).start();
+      }
+      return next;
+    });
+  }
+
   function startCountdown(p: RoundStartPayload) {
     if (tickRef.current) clearInterval(tickRef.current);
-    const deadline = p.serverStartTimeMs + p.timeLimitSeconds * 1000;
+    const total = p.timeLimitSeconds * 1000;
+    const deadline = p.serverStartTimeMs + total;
+    const remaining = Math.max(deadline - Date.now(), 0);
+    barAnim.setValue(total > 0 ? remaining / total : 0);
+    Animated.timing(barAnim, { toValue: 0, duration: remaining, useNativeDriver: false }).start();
     tickRef.current = setInterval(() => {
-      const remainingMs = deadline - Date.now();
-      setSecondsLeft(Math.max(Math.ceil(remainingMs / 1000), 0));
-      if (remainingMs <= 0 && tickRef.current) {
-        clearInterval(tickRef.current);
-      }
+      const remMs = deadline - Date.now();
+      setSecondsLeft(Math.max(Math.ceil(remMs / 1000), 0));
+      if (remMs <= 0 && tickRef.current) clearInterval(tickRef.current);
     }, 200);
+  }
+
+  function scrollTrackerTo(roundNumber: number) {
+    requestAnimationFrame(() =>
+      trackerRef.current?.scrollTo({ x: Math.max((roundNumber - 4) * 26, 0), animated: true })
+    );
   }
 
   async function buyRound() {
     if (!round) return;
     const { data, error } = await supabase.rpc('buy_round', { p_game_id: gameId, p_round_number: round.roundNumber });
     if (error) {
-      // Needing to top up (rounds 1-30) surfaces as a TOP_UP_REQUIRED error -
-      // send the player to the wallet to add funds, then they can retry the round.
       if (error.message.includes('TOP_UP_REQUIRED')) {
         Alert.alert('Top up to continue', "You don't have enough tokens for this round. Add funds to keep playing.", [
           { text: 'Not now', style: 'cancel' },
@@ -97,48 +143,111 @@ export default function GameScreen({ route, navigation }: Props) {
       }
       return;
     }
-    // Round 31+ with insufficient funds returns gameOver instead of an error.
     if (data?.gameOver) {
       Alert.alert('Game over', data.message, [{ text: 'OK', onPress: () => navigation.replace('Lobby') }]);
       return;
     }
     setStreakFree(Boolean(data?.streakFree));
+    if (data?.gamePoolState?.totalPrizePoolCents != null) updatePool(data.gamePoolState.totalPrizePoolCents);
     setPurchased(true);
   }
 
-  async function answer(option: 'A' | 'B' | 'C' | 'D') {
-    if (!round) return;
+  async function answer(option: Option) {
+    if (!round || selected) return;
+    setSelected(option);
     const { data, error } = await supabase.rpc('submit_answer', {
       p_game_id: gameId,
       p_round_number: round.roundNumber,
       p_selected_option: option,
     });
     if (error) {
+      setSelected(null);
       Alert.alert("Couldn't submit answer", error.message);
       return;
     }
     setPhase('answered');
-    const delta = data.pointsAwarded >= 0 ? `+${data.pointsAwarded}` : `${data.pointsAwarded}`;
-    Alert.alert(
-      data.isCorrect ? 'Correct!' : 'Incorrect',
-      `${delta} points  ·  Total: ${data.newTotalScore}`
+    setSelectedCorrect(Boolean(data.isCorrect));
+    setHistory((h) => ({ ...h, [round.roundNumber]: data.isCorrect ? 'correct' : 'incorrect' }));
+  }
+
+  const tollLabel = round ? `Unlock Round ${round.roundNumber} (${money(round.costCents)})` : '';
+
+  function renderTracker() {
+    const current = round?.roundNumber ?? 0;
+    return (
+      <ScrollView
+        ref={trackerRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.tracker}
+        contentContainerStyle={styles.trackerContent}
+      >
+        {Array.from({ length: 100 }, (_, i) => i + 1).map((n) => {
+          const outcome = history[n];
+          const isCurrent = n === current;
+          const dotStyle = [
+            styles.dot,
+            outcome === 'correct' && styles.dotCorrect,
+            outcome === 'incorrect' && styles.dotIncorrect,
+            isCurrent && styles.dotCurrent,
+            !outcome && !isCurrent && n > current && styles.dotLocked,
+          ];
+          return (
+            <View key={n} style={dotStyle}>
+              {n > current && !outcome ? <Text style={styles.lockGlyph}>🔒</Text> : null}
+            </View>
+          );
+        })}
+      </ScrollView>
     );
+  }
+
+  function optionStyle(key: Option) {
+    // Reveal colors: your pick turns emerald/crimson; once the round ends the
+    // correct answer always shows emerald.
+    const revealedCorrect = lastResult?.correctOption as Option | undefined;
+    if (revealedCorrect && key === revealedCorrect) return [styles.optionButton, styles.optionCorrect];
+    if (selected === key && selectedCorrect === true) return [styles.optionButton, styles.optionCorrect];
+    if (selected === key && selectedCorrect === false) return [styles.optionButton, styles.optionIncorrect];
+    if (selected === key) return [styles.optionButton, styles.optionSelected];
+    return [styles.optionButton];
   }
 
   if (!round) {
     return (
       <View style={styles.container}>
-        <Text style={styles.waiting}>Waiting for the next round to start...</Text>
+        <PrizeHeader prizePoolCents={prizePoolCents} pulse={poolPulse} />
+        <Text style={styles.waiting}>Waiting for the next round to start…</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {round.isOvertime && <Text style={styles.overtimeBanner}>SUDDEN DEATH OVERTIME</Text>}
-      <Text style={styles.roundLabel}>Round {round.roundNumber}{!round.isOvertime && ' / 100'}</Text>
-      <Text style={styles.timer}>{secondsLeft}s</Text>
-      <Text style={styles.question}>{round.questionText}</Text>
+      <PrizeHeader prizePoolCents={prizePoolCents} pulse={poolPulse} />
+      {renderTracker()}
+
+      {round.isOvertime && <Text style={styles.overtimeBanner}>⚡ SUDDEN DEATH OVERTIME</Text>}
+      <Text style={styles.roundLabel}>
+        Round {round.roundNumber}
+        {!round.isOvertime && ' / 100'} · {secondsLeft}s
+      </Text>
+
+      {/* Question card + shrinking countdown bar */}
+      <View style={styles.card}>
+        <Text style={styles.question}>{round.questionText}</Text>
+        <View style={styles.barTrack}>
+          <Animated.View
+            style={[
+              styles.barFill,
+              {
+                width: barAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+                backgroundColor: secondsLeft <= 3 ? theme.crimson : theme.emerald,
+              },
+            ]}
+          />
+        </View>
+      </View>
 
       {!purchased && phase === 'open' && regionBlocked && (
         <View style={styles.blockedBox}>
@@ -149,52 +258,124 @@ export default function GameScreen({ route, navigation }: Props) {
         </View>
       )}
 
+      {/* Micro-debit action state: primary button shows the entry toll */}
       {!purchased && phase === 'open' && !regionBlocked && (
         <Pressable style={styles.buyButton} onPress={buyRound}>
-          <Text style={styles.buyButtonText}>Buy this round - {round.costCents}c</Text>
+          <Text style={styles.buyButtonText}>{tollLabel}</Text>
         </Pressable>
       )}
 
-      {purchased && streakFree && phase === 'open' && <Text style={styles.streakBadge}>FREE - streak bonus!</Text>}
+      {purchased && streakFree && phase !== 'closed' && (
+        <Text style={styles.streakBadge}>FREE — streak bonus! 🔥</Text>
+      )}
 
-      {purchased && phase === 'open' && (
+      {purchased && phase !== 'closed' && (
         <View style={styles.options}>
-          {(Object.entries(round.options) as [string, string][]).map(([key, label]) => (
-            <Pressable key={key} style={styles.optionButton} onPress={() => answer(key as 'A' | 'B' | 'C' | 'D')}>
-              <Text style={styles.optionText}>
-                {key}. {label}
-              </Text>
+          {(Object.entries(round.options) as [Option, string][]).map(([key, label]) => (
+            <Pressable key={key} disabled={!!selected} style={optionStyle(key)} onPress={() => answer(key)}>
+              <Text style={styles.optionKey}>{key}</Text>
+              <Text style={styles.optionText}>{label}</Text>
             </Pressable>
           ))}
         </View>
       )}
 
-      {phase === 'answered' && <Text style={styles.waiting}>Answer locked in - waiting for round to end...</Text>}
-
-      {lastResult && (
-        <View style={styles.resultBox}>
-          <Text style={styles.resultText}>Correct answer: {lastResult.correctOption}</Text>
-        </View>
+      {phase === 'answered' && !lastResult && (
+        <Text style={styles.waiting}>Answer locked in — waiting for the round to end…</Text>
       )}
     </View>
   );
 }
 
+function PrizeHeader({ prizePoolCents, pulse }: { prizePoolCents: number; pulse: Animated.Value }) {
+  return (
+    <View style={styles.prizeHeader}>
+      <Text style={styles.prizeLabel}>LIVE PRIZE POOL</Text>
+      <Animated.Text style={[styles.prizeValue, { transform: [{ scale: pulse }] }]}>
+        {money(prizePoolCents)}
+      </Animated.Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: '#0f0f14' },
-  waiting: { color: '#9a9aa5', fontSize: 16, textAlign: 'center', marginTop: 48 },
-  overtimeBanner: { color: '#ef4444', fontSize: 14, fontWeight: '800', marginTop: 24, letterSpacing: 1 },
-  blockedBox: { backgroundColor: '#ef444422', borderRadius: 10, padding: 16 },
-  blockedText: { color: '#ef4444', fontSize: 15 },
-  roundLabel: { color: '#9a9aa5', fontSize: 14, marginTop: 8 },
-  streakBadge: { color: '#22c55e', fontWeight: '700', marginBottom: 12 },
-  timer: { color: '#22c55e', fontSize: 40, fontWeight: '800', marginBottom: 16 },
-  question: { color: '#fff', fontSize: 20, fontWeight: '700', marginBottom: 24 },
-  buyButton: { backgroundColor: '#22c55e', borderRadius: 10, paddingVertical: 16 },
-  buyButtonText: { color: '#0f0f14', textAlign: 'center', fontWeight: '800', fontSize: 16 },
-  options: { gap: 12 },
-  optionButton: { backgroundColor: '#1c1c24', borderRadius: 10, paddingVertical: 14, paddingHorizontal: 16, marginBottom: 12 },
-  optionText: { color: '#fff', fontSize: 16 },
-  resultBox: { marginTop: 24, padding: 16, backgroundColor: '#1c1c24', borderRadius: 10 },
-  resultText: { color: '#fff', fontSize: 16, textAlign: 'center' },
+  container: { flex: 1, padding: 20, paddingTop: 56, backgroundColor: theme.bg },
+  waiting: { color: theme.textMuted, fontSize: 16, textAlign: 'center', marginTop: 48 },
+
+  prizeHeader: {
+    alignItems: 'center',
+    backgroundColor: theme.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  prizeLabel: { color: theme.gold, fontSize: 11, fontWeight: '800', letterSpacing: 2 },
+  prizeValue: { color: theme.gold, fontSize: 34, fontWeight: '900', marginTop: 2 },
+
+  tracker: { flexGrow: 0, marginBottom: 16 },
+  trackerContent: { gap: 6, alignItems: 'center', paddingVertical: 2 },
+  dot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: theme.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dotCorrect: { backgroundColor: theme.emerald },
+  dotIncorrect: { backgroundColor: theme.crimson },
+  dotCurrent: { backgroundColor: theme.gold, transform: [{ scale: 1.2 }] },
+  dotLocked: { backgroundColor: 'transparent', borderWidth: 1, borderColor: theme.border },
+  lockGlyph: { fontSize: 9, opacity: 0.5 },
+
+  overtimeBanner: { color: theme.crimson, fontSize: 14, fontWeight: '800', letterSpacing: 1, marginBottom: 4 },
+  roundLabel: { color: theme.textMuted, fontSize: 14, marginBottom: 10 },
+
+  card: {
+    backgroundColor: theme.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
+    padding: 20,
+    marginBottom: 18,
+  },
+  question: { color: theme.text, fontSize: 21, fontWeight: '700', marginBottom: 18, lineHeight: 28 },
+  barTrack: { height: 8, borderRadius: 4, backgroundColor: theme.surfaceAlt, overflow: 'hidden' },
+  barFill: { height: 8, borderRadius: 4 },
+
+  blockedBox: { backgroundColor: theme.crimson + '22', borderRadius: 12, padding: 16 },
+  blockedText: { color: theme.crimson, fontSize: 15 },
+
+  buyButton: {
+    backgroundColor: theme.emerald,
+    borderRadius: 14,
+    paddingVertical: 18,
+    shadowColor: theme.emerald,
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  buyButtonText: { color: theme.bg, textAlign: 'center', fontWeight: '900', fontSize: 17 },
+
+  streakBadge: { color: theme.emerald, fontWeight: '800', marginBottom: 12, fontSize: 15 },
+
+  options: { gap: 12, marginTop: 4 },
+  optionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.border,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  optionSelected: { borderColor: theme.gold },
+  optionCorrect: { backgroundColor: theme.emeraldDeep, borderColor: theme.emerald },
+  optionIncorrect: { backgroundColor: '#5A1B24', borderColor: theme.crimson },
+  optionKey: { color: theme.textMuted, fontWeight: '800', fontSize: 16, width: 26 },
+  optionText: { color: theme.text, fontSize: 16, flex: 1 },
 });
