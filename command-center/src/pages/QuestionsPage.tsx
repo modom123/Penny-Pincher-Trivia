@@ -35,6 +35,19 @@ type SubjectCoverage = {
   grade_levels_covered: number;
 };
 
+type ItemAnalytics = {
+  question_id: string;
+  question_text: string;
+  category: string | null;
+  grade_level: number | null;
+  times_answered: number;
+  correct_count: number;
+  correct_rate: number;
+  avg_score_correct: number | null;
+  avg_score_wrong: number | null;
+  discrimination: number | null;
+};
+
 const emptyForm = {
   question_id: null as string | null,
   question_text: '',
@@ -62,6 +75,22 @@ export default function QuestionsPage() {
   const [genMessage, setGenMessage] = useState<string | null>(null);
   const [coverage, setCoverage] = useState<SubjectCoverage[]>([]);
   const [coverageFilter, setCoverageFilter] = useState('');
+  const [items, setItems] = useState<ItemAnalytics[]>([]);
+  const [itemBusy, setItemBusy] = useState(false);
+  const [itemMsg, setItemMsg] = useState<string | null>(null);
+
+  async function loadItemAnalytics() {
+    setItemBusy(true);
+    setItemMsg(null);
+    // p_min_answered=1 so early data still shows; raise it once you have volume.
+    const { data, error } = await supabase.rpc('question_item_analytics', { p_min_answered: 1 });
+    if (error) setItemMsg(`Error: ${error.message}`);
+    else {
+      setItems((data ?? []) as ItemAnalytics[]);
+      if (!data?.length) setItemMsg('No questions have been answered enough times yet.');
+    }
+    setItemBusy(false);
+  }
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -233,6 +262,50 @@ export default function QuestionsPage() {
           </tbody>
         </table>
         {coverage.length === 0 && <p style={{ color: '#9a9aa5' }}>No subjects seeded yet. Run the subjects seed migration.</p>}
+      </div>
+
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>Item analytics (difficulty calibration)</h3>
+        <p style={{ color: '#9a9aa5', fontSize: 13 }}>
+          How each played question behaves. <strong>Correct rate</strong> should trend down as grade rises;{' '}
+          <strong>discrimination</strong> (avg game score of players who got it right minus those who got it wrong)
+          should be clearly positive. Low/negative discrimination = the question isn't measuring skill (ambiguous or
+          miscalibrated) — review or re-tier it. Rows sorted worst-discrimination first.
+        </p>
+        <button onClick={loadItemAnalytics} disabled={itemBusy}>
+          {itemBusy ? 'Loading…' : 'Load item analytics'}
+        </button>
+        {itemMsg && <p style={{ marginTop: 12 }}>{itemMsg}</p>}
+        {items.length > 0 && (
+          <table style={{ marginTop: 16 }}>
+            <thead>
+              <tr>
+                <th>Grade</th>
+                <th>Question</th>
+                <th>Answered</th>
+                <th>Correct rate</th>
+                <th>Discrimination</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((it) => {
+                const weak = it.discrimination != null && it.discrimination <= 0;
+                return (
+                  <tr key={it.question_id}>
+                    <td>{it.grade_level ?? '—'}</td>
+                    <td>{it.question_text}</td>
+                    <td>{it.times_answered}</td>
+                    <td>{it.correct_rate != null ? `${Math.round(it.correct_rate * 100)}%` : '—'}</td>
+                    <td style={{ color: weak ? '#ef4444' : '#12E29A', fontWeight: 700 }}>
+                      {it.discrimination ?? '—'}
+                      {weak ? ' ⚠' : ''}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
 
       <div className="card">

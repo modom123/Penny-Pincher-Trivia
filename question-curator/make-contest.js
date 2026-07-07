@@ -55,10 +55,11 @@ if (PER_GRADE < 5 && !REUSE) console.warn("Note: <5 per grade won't be enough to
         const h = lib.contentHash(q.question_text);
         if (seen.has(h)) continue;
         seen.add(h);
+        const s = lib.shuffleOptions(q); // balance the correct-answer position
         const row = {
           question_text: q.question_text.trim(),
-          options: q.options,
-          correct_option: q.correct_option,
+          options: s.options,
+          correct_option: s.correct_option,
           difficulty_level: grade, // legacy column, kept in valid 1..100 range
           grade_level: grade,
           category: subject.name,

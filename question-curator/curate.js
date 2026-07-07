@@ -32,6 +32,7 @@ const { ANTHROPIC_API_KEY } = process.env;
 if (!ANTHROPIC_API_KEY && !DRY_RUN) fail("Missing ANTHROPIC_API_KEY (see .env.example). Use --dry-run to test without it.");
 
 const db = lib.makeDb();
+const DIST = { A: 0, B: 0, C: 0, D: 0 }; // correct-answer position distribution (should be ~even)
 
 async function curateSubject(subject) {
   const seen = await lib.loadSeenHashes(db, subject.id);
@@ -52,10 +53,12 @@ async function curateSubject(subject) {
         const h = lib.contentHash(q.question_text);
         if (seen.has(h)) { skipped++; continue; }
         seen.add(h);
+        const s = lib.shuffleOptions(q); // balance the correct-answer position
+        DIST[s.correct_option]++;
         fresh.push({
           question_text: q.question_text.trim(),
-          options: q.options,
-          correct_option: q.correct_option,
+          options: s.options,
+          correct_option: s.correct_option,
           difficulty_level: grade,
           grade_level: grade,
           category: subject.name,
@@ -106,6 +109,7 @@ async function insertDrafts(rows) {
     }
   });
   console.log(`\nDone. ${total} draft(s) written to question_drafts (pending review).`);
+  console.log(`Correct-answer distribution: A=${DIST.A} B=${DIST.B} C=${DIST.C} D=${DIST.D} (balanced by shuffle).`);
 })();
 
 async function loadSubjects() {
