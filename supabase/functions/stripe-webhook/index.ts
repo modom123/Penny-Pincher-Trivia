@@ -26,12 +26,17 @@ Deno.serve(async (req: Request) => {
     const session = event.data.object as Stripe.Checkout.Session;
     const userId = session.metadata?.userId;
     const tokens = parseInt(session.metadata?.tokens ?? "0", 10);
+    // Cash actually paid (withdrawable); anything above it is a promo/bonus grant.
+    // Fall back to amount_total from Stripe if the metadata is missing.
+    const cashCents = parseInt(session.metadata?.priceCents ?? "", 10) || (session.amount_total ?? 0);
+    const bonusCents = Math.max(tokens - cashCents, 0);
 
     if (userId && tokens > 0) {
       const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
       const { error } = await admin.rpc("credit_wallet_from_stripe", {
         p_user_id: userId,
-        p_amount_cents: tokens,
+        p_cash_cents: cashCents,
+        p_bonus_cents: bonusCents,
         p_stripe_event_id: event.id,
       });
       if (error) {

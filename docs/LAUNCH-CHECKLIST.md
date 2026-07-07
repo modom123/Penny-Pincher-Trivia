@@ -83,24 +83,35 @@ RADAR_SECRET_KEY                                           # geo verification (o
 ADMIN_USER_IDS                                             # legacy create-game gate (command center uses staff_roles instead)
 ```
 
-## ⚠️ Bonus-token economics — MUST resolve before real payments
+## ✅ Bonus-token economics — RESOLVED (cash/promo wallet split)
 
-Token bundles grant **bonus tokens** (`$5 → 600`, `$10 → 1,300`, `$20 → 2,800`), but
-1 token still equals 1 cent of in-game and prize-pool value, and the wallet is currently
-withdrawable 1:1. As built, that creates two real problems:
+Token bundles grant **bonus tokens** (`$5 → 600`, `$10 → 1,300`, `$20 → 2,800`), and 1
+token equals 1 cent of in-game / prize-pool value. Left unaddressed this created a cash-out
+arbitrage (buy `$20 → 2,800`, never play, withdraw $28) and a pool-solvency hole (bonus
+tokens inflating the prize pool above real USD collected). **Both are now closed** by the
+cash/promo wallet split (migrations `20260707003220` → `20260707010300`):
 
-1. **Cash-out arbitrage** — a player could buy `$20 → 2,800` tokens, never play, and
-   withdraw $28.00. Free money out of the platform's pocket.
-2. **Pool solvency** — bonus tokens spent into rounds inflate the prize pool (denominated
-   in token-cents) above the real cash actually collected, so paying out 60% of the pool
-   can exceed the real USD taken in.
+- `profiles.promo_balance_cents` tracks the non-withdrawable bonus slice;
+  **withdrawable cash = `wallet_balance_cents − promo_balance_cents`**.
+- `credit_wallet_from_stripe(user, cash, bonus, event)` credits the cash paid as
+  withdrawable and the bonus above it as promo (the `stripe-webhook` derives
+  `bonus = tokens − priceCents`).
+- `buy_round` spends **promo first**, and **only the cash portion funds the prize pool**
+  (60/40) — so the pool never exceeds real USD collected.
+- `reserve_withdrawal` draws **only** the cash-funded balance; a withdrawal that dips into
+  bonus raises `INSUFFICIENT_WITHDRAWABLE`.
+- `my_compliance_status` exposes `withdrawableCents` + `promoBalanceCents`; the mobile
+  Wallet screen shows cash vs bonus separately.
 
-**Recommended fix before enabling real deposits/withdrawals:** split the wallet into
-`purchased_balance` (cash-funded, withdrawable) and `promo_balance` (bonus tokens,
-play-only, non-withdrawable); spend promo first, and have `reserve_withdrawal` draw only
-from the purchased/cash-funded portion. This is a schema + `buy_round`/`reserve_withdrawal`
-change — flagged here rather than silently shipping the arbitrage. `[COUNSEL: also a
-disclosure/consumer-protection question — see legal/02-terms-of-service-DRAFT.md §3.1.]`
+Verified end-to-end against the live DB (promo-first spend, cash-only pool 30/20 from a
+50c cash round, MIN/MAX buy-in gates, withdrawal cash-only, promo-locked, Stripe
+idempotency). `[COUNSEL: bonus terms are still a disclosure/consumer-protection question —
+see legal/02-terms-of-service-DRAFT.md §3.1.]`
+
+### Per-game token buy-in limits
+`games.min_buy_in_tokens` / `max_buy_in_tokens` are enforced in `buy_round`: a player must
+**hold ≥ MIN** tokens to join a game (`MIN_BUYIN_REQUIRED`), and cumulative token spend in a
+game may not exceed **MAX** (`MAX_BUYIN_REACHED`). Null = no limit. Set them at game creation.
 
 ## What is deliberately NOT automated (needs a human)
 

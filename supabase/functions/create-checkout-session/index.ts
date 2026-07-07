@@ -5,10 +5,11 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@16";
 
 // Token bundles. Larger bundles grant bonus tokens (you get more tokens than
-// cents paid). NOTE: 1 token still equals 1 cent of in-game / prize-pool value,
-// so the bonus tokens above the amount paid are a promotional subsidy - see the
-// arbitrage/solvency note in docs/LAUNCH-CHECKLIST.md before enabling real
-// payments (bonus tokens should very likely be play-only, not withdrawable).
+// cents paid). 1 token equals 1 cent of in-game / prize-pool value. The bonus
+// tokens above the cash paid are a promotional subsidy that is credited to the
+// player's PROMO balance (play-only, non-withdrawable) - the cash paid
+// (price_cents) is the withdrawable portion. See credit_wallet_from_stripe and
+// docs/LAUNCH-CHECKLIST.md.
 const BUNDLES: Record<string, { price_cents: number; tokens: number; label: string }> = {
   starter: { price_cents: 100, tokens: 100, label: "$1.00 = 100 Tokens" },
   small: { price_cents: 500, tokens: 600, label: "$5.00 = 600 Tokens" },
@@ -94,7 +95,12 @@ Deno.serve(async (req: Request) => {
         quantity: 1,
       },
     ],
-    metadata: { userId: user.id, bundleId: body.bundleId!, tokens: String(bundle.tokens) },
+    metadata: {
+      userId: user.id,
+      bundleId: body.bundleId!,
+      tokens: String(bundle.tokens),
+      priceCents: String(bundle.price_cents),
+    },
     success_url: `${appUrl}/wallet/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${appUrl}/wallet/cancel`,
   });

@@ -99,6 +99,26 @@ The wallet never goes negative. When you can't afford the next round's entry cos
 > realistically needs to top up *between* games or very fast, not mid-countdown. Worth
 > confirming the intended pacing (turn-based vs. live) for the top-up flow to feel fair.
 
+## Wallet: cash vs bonus tokens
+
+Token bundles grant bonus tokens (`$1 → 100`, `$5 → 600`, `$10 → 1,300`, `$20 → 2,800`).
+1 token = 1 cent of in-game value, so the wallet is split so bonuses can't be cashed out or
+inflate real payouts:
+
+- `profiles.wallet_balance_cents` is the **total** spendable balance (cash + bonus);
+  `profiles.promo_balance_cents` is the non-withdrawable bonus slice.
+  **Withdrawable cash = `wallet_balance_cents − promo_balance_cents`.**
+- `credit_wallet_from_stripe(user, cash, bonus, event)` credits the cash paid as
+  withdrawable and the bonus above it as promo (the webhook derives `bonus = tokens −
+  priceCents`; idempotent on the Stripe event id).
+- `buy_round` spends **promo first**, and **only the cash portion funds the prize pool**
+  (60/40) — the pool can never exceed the real USD collected.
+- `reserve_withdrawal` draws **only** cash; dipping into bonus raises
+  `INSUFFICIENT_WITHDRAWABLE`.
+- **Per-game buy-in limits**: `games.min_buy_in_tokens` (must *hold* ≥ MIN to join —
+  `MIN_BUYIN_REQUIRED`) and `games.max_buy_in_tokens` (cumulative token-spend cap —
+  `MAX_BUYIN_REACHED`); null = no limit.
+
 ## Anti-cheat
 
 - The server's clock is the only source of truth for timing - `submit_answer` computes

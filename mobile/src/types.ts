@@ -5,6 +5,7 @@ export type RoundStartPayload = {
   costCents: number;
   timeLimitSeconds: number;
   serverStartTimeMs: number;
+  totalPrizePoolCents?: number;
   isOvertime?: boolean;
 };
 
@@ -12,6 +13,7 @@ export type RoundEndPayload = {
   roundNumber: number;
   correctOption: string;
   leaderboard: { userId: string; score: number }[];
+  totalPrizePoolCents?: number;
   isFinalRound: boolean;
 };
 

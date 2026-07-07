@@ -19,6 +19,8 @@ type Compliance = {
   regionState: string | null;
   regionBlocked: boolean;
   walletBalanceCents: number;
+  promoBalanceCents: number;
+  withdrawableCents: number;
 };
 
 export default function WalletScreen() {
@@ -109,8 +111,27 @@ export default function WalletScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      <Text style={styles.balanceLabel}>Wallet Balance</Text>
+      <Text style={styles.balanceLabel}>Token Balance</Text>
       <Text style={styles.balance}>{c === null ? '...' : `$${(c.walletBalanceCents / 100).toFixed(2)}`}</Text>
+
+      {c !== null && (
+        <View style={styles.splitRow}>
+          <View style={styles.splitCell}>
+            <Text style={styles.splitValueCash}>${(c.withdrawableCents / 100).toFixed(2)}</Text>
+            <Text style={styles.splitLabel}>Cash · withdrawable</Text>
+          </View>
+          <View style={styles.splitDivider} />
+          <View style={styles.splitCell}>
+            <Text style={styles.splitValueBonus}>${(c.promoBalanceCents / 100).toFixed(2)}</Text>
+            <Text style={styles.splitLabel}>Bonus · play-only</Text>
+          </View>
+        </View>
+      )}
+      {c !== null && c.promoBalanceCents > 0 && (
+        <Text style={styles.splitNote}>
+          Bonus tokens play just like cash, but only your cash balance can be withdrawn.
+        </Text>
+      )}
 
       {BUNDLES.map((bundle) => (
         <Pressable key={bundle.id} style={styles.button} onPress={() => buyBundle(bundle.id)} disabled={busy}>
@@ -119,6 +140,11 @@ export default function WalletScreen() {
       ))}
 
       <Text style={styles.sectionTitle}>Cash out</Text>
+      {c !== null && (
+        <Text style={styles.withdrawableHint}>
+          Withdrawable cash: ${(c.withdrawableCents / 100).toFixed(2)}
+        </Text>
+      )}
 
       {c && c.kycStatus !== 'verified' && (
         <View style={styles.notice}>
@@ -170,8 +196,16 @@ export default function WalletScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, backgroundColor: '#0f0f14' },
   balanceLabel: { color: '#9a9aa5', fontSize: 14, marginTop: 24, textAlign: 'center' },
-  balance: { color: '#fff', fontSize: 48, fontWeight: '800', textAlign: 'center', marginBottom: 32 },
-  sectionTitle: { color: '#fff', fontSize: 18, fontWeight: '700', marginTop: 24, marginBottom: 12 },
+  balance: { color: '#fff', fontSize: 48, fontWeight: '800', textAlign: 'center', marginBottom: 16 },
+  splitRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1c1c24', borderRadius: 12, paddingVertical: 14, marginBottom: 8 },
+  splitCell: { flex: 1, alignItems: 'center' },
+  splitDivider: { width: 1, alignSelf: 'stretch', backgroundColor: '#2c2c36' },
+  splitValueCash: { color: '#22c55e', fontSize: 22, fontWeight: '800' },
+  splitValueBonus: { color: '#f5c542', fontSize: 22, fontWeight: '800' },
+  splitLabel: { color: '#9a9aa5', fontSize: 12, marginTop: 4 },
+  splitNote: { color: '#6a6a75', fontSize: 12, textAlign: 'center', marginBottom: 24 },
+  withdrawableHint: { color: '#22c55e', fontSize: 13, marginBottom: 12 },
+  sectionTitle: { color: '#fff', fontSize: 18, fontWeight: '700', marginTop: 24, marginBottom: 8 },
   button: { backgroundColor: '#1c1c24', borderRadius: 10, paddingVertical: 14, marginBottom: 12 },
   buttonDisabled: { opacity: 0.5 },
   smallButton: { backgroundColor: '#22c55e', borderRadius: 8, paddingVertical: 10, marginTop: 10 },
