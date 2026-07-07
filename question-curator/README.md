@@ -38,13 +38,35 @@ Apply the migrations first (they create the `subjects` table and seed all 500):
 supabase db push            # applies 20260706190000_subjects_and_curator + 20260706190100_seed_subjects
 ```
 
-## Run
+## Two ways to fill the bank
+
+### 1. Per-contest (recommended) — `make-contest.js`
+
+A tournament only needs **100 questions** (5 per grade × 20 grades). Generate just
+those on demand and publish the contest — the bank fills lazily, one tournament at a
+time, so you never pull all 250k.
+
+```bash
+node make-contest.js --subject ancient-egypt   # generate 100 + publish a tournament
+node make-contest.js --subject chess --draft    # generate to the review queue, don't publish
+node make-contest.js --subject chess --reuse     # publish from existing bank, no API spend
+node make-contest.js --subject chess --dry-run   # generate + preview, write nothing
+```
+
+> ⚠️ **Real money:** without `--draft`, questions go straight into a live contest with
+> **no human fact-check**. For real-money tournaments use `--draft`, approve them in the
+> command center, then `--reuse` to publish.
+
+### 2. Bulk pre-fill (optional) — `curate.js`
+
+Only if you want a deep pre-built bank (up to 25/grade = 500/subject) ahead of time.
+Writes drafts for review.
 
 ```bash
 npm run smoke                       # 1 subject, dry-run (no writes) — sanity check
 node curate.js --subject chess      # one subject
 node curate.js --domain "Science & Nature"
-node curate.js --all                # the whole bank (long, uses real API budget)
+node curate.js --all                # the whole bank (long, large API budget)
 ```
 
 Useful flags:

@@ -7,6 +7,7 @@
   "engines": { "node": ">=18" },
   "scripts": {
     "build:seed": "node build-seed.js",
+    "contest": "node make-contest.js",
     "curate": "node curate.js",
     "curate:all": "node curate.js --all",
     "smoke": "node curate.js --all --limit-subjects 1 --dry-run"
