@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet, Alert, ScrollView } from 'react-nati
 import * as Haptics from 'expo-haptics';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
+import { getVerifiedLocationToken } from '../lib/radar';
 import type { RootStackParamList, RoundStartPayload, RoundEndPayload, GameCompletedPayload } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Game'>;
@@ -40,8 +41,12 @@ export default function GameScreen({ route, navigation }: Props) {
   useEffect(() => {
     (async () => {
       try {
+        // On device builds this is Radar's signed verified-location token; null on
+        // web/soft launch (RegionGate's declared region is used). buy_round is the
+        // hard block regardless.
+        const radarToken = await getVerifiedLocationToken();
         const { data, error } = await supabase.functions.invoke('geo-check', {
-          body: { state: undefined, radarToken: undefined },
+          body: { radarToken },
         });
         if (!error && data?.regionBlocked) setRegionBlocked(true);
       } catch {

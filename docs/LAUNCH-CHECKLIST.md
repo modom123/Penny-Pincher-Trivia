@@ -43,8 +43,8 @@ human decision before real money and the public app stores are involved.
 | Buy-in blocked in restricted states (denylist override) | ✅ | `buy_round` also honours `blocked_states` on top of the whitelist |
 | Buy-in blocked when location never verified | ✅ | `buy_round` raises `LOCATION_REQUIRED` on null region |
 | Admin-editable allow/block lists (no app release needed) | ✅ | Command center → Compliance → Allowed states (`admin_update_allowed_states`) + Blocked states (`admin_update_blocked_states`) |
-| Device location ping on opening a game | 🔌 | `geo-check` edge fn → `set_verified_region`; mobile calls it on GameScreen mount |
-| Anti-spoof verified location (not raw client lat/lng) | 🔌 | Set `RADAR_SECRET_KEY`; replace the placeholder in `geo-check` with the Radar.io/GeoComply verify call |
+| Device location ping on opening a game | ✅ | `geo-check` edge fn → `set_verified_region`; mobile calls it on GameScreen mount + RegionGate |
+| Anti-spoof verified location (not raw client lat/lng) | ✅ / 🔌 | `geo-check` validates Radar's signed verified-location JWT (`RADAR_JWT_SECRET`, HS256), enforces `passed` + expiry, and reads the *verified* state. When the secret is set it **requires** a valid token (rejects self-declared regions). Remaining: install `react-native-radar` on device builds (`lib/radar.ts` hook + `RADAR_PUBLISHABLE_KEY`) and set `RADAR_JWT_SECRET` |
 | Which states to block | 🧑 | `legal/01-state-restrictions.md` — needs counsel |
 
 ## 4. Customer Support & Dispute Desk
@@ -80,7 +80,7 @@ Project Settings → Edge Functions → Secrets:
 STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, APP_PUBLIC_URL   # payments
 ANTHROPIC_API_KEY                                          # question drafting
 KYC_WEBHOOK_SECRET                                         # KYC webhook auth
-RADAR_SECRET_KEY                                           # geo verification (optional until anti-spoof needed)
+RADAR_JWT_SECRET                                           # geo verification: Radar Fraud "JWT Secret Key" (HS256). Setting it makes geo-check require a valid verified-location token
 ADMIN_USER_IDS                                             # legacy create-game gate (command center uses staff_roles instead)
 ```
 

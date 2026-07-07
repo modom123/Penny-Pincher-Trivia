@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { getVerifiedLocationToken } from '../lib/radar';
 
 // Soft-launch region control (Step 2 of the launch playbook). Real-money play is
 // geo-fenced to the allowlist (TX, CA at soft launch). Until the Radar.io/GeoComply
@@ -39,7 +40,11 @@ export default function RegionGate() {
   async function setRegion(state: string) {
     setBusy(true);
     try {
-      await supabase.functions.invoke('geo-check', { body: { state } });
+      // On device builds this returns an anti-spoofed Radar token; geo-check reads
+      // the verified state from it and ignores the declared one. Null on web/soft
+      // launch, where the declared `state` is accepted as a stopgap.
+      const radarToken = await getVerifiedLocationToken();
+      await supabase.functions.invoke('geo-check', { body: { state, radarToken } });
       await load();
     } finally {
       setBusy(false);
