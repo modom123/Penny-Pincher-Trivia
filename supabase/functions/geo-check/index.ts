@@ -65,10 +65,17 @@ Deno.serve(async (req: Request) => {
 
   // Tell the client whether this region is currently allowed, so it can show the
   // "unavailable in your region" message and hide the Buy button proactively.
-  const { data: config } = await admin.from("platform_config").select("value").eq("key", "blocked_states").single();
-  const blocked = ((config?.value as string[]) ?? []).includes(state);
+  // Model matches buy_round: whitelist-primary (allow only whitelisted states when
+  // an allowlist is configured) with blocked_states as a denylist override.
+  const { data: rows } = await admin
+    .from("platform_config")
+    .select("key,value")
+    .in("key", ["allowed_states", "blocked_states"]);
+  const allowed = (rows?.find((r) => r.key === "allowed_states")?.value as string[]) ?? [];
+  const blockedList = (rows?.find((r) => r.key === "blocked_states")?.value as string[]) ?? [];
+  const regionBlocked = (allowed.length > 0 && !allowed.includes(state)) || blockedList.includes(state);
 
-  return new Response(JSON.stringify({ state, country, regionBlocked: blocked }), {
+  return new Response(JSON.stringify({ state, country, regionBlocked, allowedStates: allowed }), {
     headers: { "Content-Type": "application/json" },
   });
 });

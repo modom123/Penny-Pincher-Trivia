@@ -39,9 +39,10 @@ human decision before real money and the public app stores are involved.
 
 | Item | Status | Where |
 |---|---|---|
-| Buy-in blocked in restricted states | ✅ | `buy_round` raises `REGION_BLOCKED` (reads `platform_config.blocked_states`) |
+| Launch **whitelist**: play allowed ONLY in TX, CA, NY, OH, PA | ✅ | `buy_round` enforces `platform_config.allowed_states` (seeded to the 5 launch states); every other region raises `REGION_BLOCKED` by default |
+| Buy-in blocked in restricted states (denylist override) | ✅ | `buy_round` also honours `blocked_states` on top of the whitelist |
 | Buy-in blocked when location never verified | ✅ | `buy_round` raises `LOCATION_REQUIRED` on null region |
-| Admin-editable blocked-states list (no app release needed) | ✅ | Command center → Compliance → Blocked states (`admin_update_blocked_states`) |
+| Admin-editable allow/block lists (no app release needed) | ✅ | Command center → Compliance → Allowed states (`admin_update_allowed_states`) + Blocked states (`admin_update_blocked_states`) |
 | Device location ping on opening a game | 🔌 | `geo-check` edge fn → `set_verified_region`; mobile calls it on GameScreen mount |
 | Anti-spoof verified location (not raw client lat/lng) | 🔌 | Set `RADAR_SECRET_KEY`; replace the placeholder in `geo-check` with the Radar.io/GeoComply verify call |
 | Which states to block | 🧑 | `legal/01-state-restrictions.md` — needs counsel |

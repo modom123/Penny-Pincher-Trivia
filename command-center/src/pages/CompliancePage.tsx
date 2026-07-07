@@ -17,6 +17,7 @@ export default function CompliancePage() {
   const [flags, setFlags] = useState<CheatFlag[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [blockedStates, setBlockedStates] = useState('');
+  const [allowedStates, setAllowedStates] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [kycFilter, setKycFilter] = useState('pending');
@@ -34,8 +35,14 @@ export default function CompliancePage() {
       setProfiles(map);
     }
 
-    const { data: config } = await supabase.from('platform_config').select('value').eq('key', 'blocked_states').single();
-    if (config) setBlockedStates((config.value as string[]).join(', '));
+    const { data: cfg } = await supabase
+      .from('platform_config')
+      .select('key, value')
+      .in('key', ['blocked_states', 'allowed_states']);
+    const blocked = cfg?.find((c) => c.key === 'blocked_states')?.value as string[] | undefined;
+    const allowed = cfg?.find((c) => c.key === 'allowed_states')?.value as string[] | undefined;
+    if (blocked) setBlockedStates(blocked.join(', '));
+    if (allowed) setAllowedStates(allowed.join(', '));
   }, []);
 
   const loadKyc = useCallback(async () => {
@@ -103,15 +110,48 @@ export default function CompliancePage() {
     }
   }
 
+  async function saveAllowedStates() {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const states = allowedStates
+        .split(',')
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean);
+      const { error } = await supabase.rpc('admin_update_allowed_states', { p_states: states });
+      if (error) throw error;
+      setMessage('Allowed-states (whitelist) updated.');
+    } catch (err) {
+      setMessage(`Error: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div>
       <h2>Compliance</h2>
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>Blocked states / territories</h3>
+        <h3 style={{ marginTop: 0 }}>Allowed states (launch whitelist)</h3>
         <p style={{ color: '#9a9aa5', fontSize: 13 }}>
-          Comma-separated state codes. See <code>legal/01-state-restrictions.md</code> - this list must be confirmed with
-          counsel, this field just makes it operationally enforceable once confirmed.
+          Comma-separated state codes where real-money play is permitted. <strong>This is the primary geo-fence</strong>:
+          when non-empty, <em>only</em> these states can buy in — every other region is blocked by default. Launch set per
+          the rollout plan: <code>TX, CA, NY, OH, PA</code>. Leave empty to fall back to blocklist-only. Confirm with
+          counsel (see <code>legal/01-state-restrictions.md</code>).
+        </p>
+        <textarea rows={2} value={allowedStates} onChange={(e) => setAllowedStates(e.target.value)} />
+        <div style={{ marginTop: 8 }}>
+          <button onClick={saveAllowedStates} disabled={busy}>
+            Save whitelist
+          </button>
+        </div>
+      </div>
+
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>Blocked states / territories (denylist override)</h3>
+        <p style={{ color: '#9a9aa5', fontSize: 13 }}>
+          Comma-separated state codes to hard-block even if otherwise allowed. Applied on top of the whitelist above.
         </p>
         <textarea rows={2} value={blockedStates} onChange={(e) => setBlockedStates(e.target.value)} />
         <div style={{ marginTop: 8 }}>
