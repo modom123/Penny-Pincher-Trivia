@@ -31,7 +31,14 @@ device fingerprinting, KYC matching, etc.]`
 
 ## 3. The Token Wallet System
 
-3.1. Real currency is converted to "Tokens" at a fixed rate of 1 Token = $0.01 USD.
+3.1. Each Token represents $0.01 USD of in-game / prize-pool value. Tokens are sold in
+bundles, and larger bundles include promotional bonus Tokens (you receive more Tokens
+than the dollar amount paid): $1.00 = 100 Tokens, $5.00 = 600 Tokens, $10.00 = 1,300
+Tokens, $20.00 = 2,800 Tokens. `[COUNSEL: because bonus Tokens grant in-game value above
+the amount paid, define clearly whether bonus Tokens are withdrawable as cash or
+play-only - see the arbitrage/solvency note in docs/LAUNCH-CHECKLIST.md. The
+"1 Token = $0.01" redemption value and any restriction on cashing out bonus Tokens must
+be stated explicitly and reviewed.]`
 Tokens are used solely to unlock trivia rounds within the App and have no cash value
 independent of gameplay `[COUNSEL: confirm whether characterizing tokens as having "no
 independent cash value" is accurate and helpful here, given tokens are directly

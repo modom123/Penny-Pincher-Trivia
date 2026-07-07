@@ -4,10 +4,16 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@16";
 
+// Token bundles. Larger bundles grant bonus tokens (you get more tokens than
+// cents paid). NOTE: 1 token still equals 1 cent of in-game / prize-pool value,
+// so the bonus tokens above the amount paid are a promotional subsidy - see the
+// arbitrage/solvency note in docs/LAUNCH-CHECKLIST.md before enabling real
+// payments (bonus tokens should very likely be play-only, not withdrawable).
 const BUNDLES: Record<string, { price_cents: number; tokens: number; label: string }> = {
-  small: { price_cents: 500, tokens: 500, label: "$5.00 = 500 Tokens" },
-  medium: { price_cents: 2000, tokens: 2000, label: "$20.00 = 2000 Tokens" },
-  large: { price_cents: 5000, tokens: 5000, label: "$50.00 = 5000 Tokens" },
+  starter: { price_cents: 100, tokens: 100, label: "$1.00 = 100 Tokens" },
+  small: { price_cents: 500, tokens: 600, label: "$5.00 = 600 Tokens" },
+  medium: { price_cents: 1000, tokens: 1300, label: "$10.00 = 1300 Tokens" },
+  large: { price_cents: 2000, tokens: 2800, label: "$20.00 = 2800 Tokens" },
 };
 
 Deno.serve(async (req: Request) => {

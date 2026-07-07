@@ -4,9 +4,10 @@ import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 
 const BUNDLES = [
-  { id: 'small', label: '$5.00 -> 500 Tokens' },
-  { id: 'medium', label: '$20.00 -> 2000 Tokens' },
-  { id: 'large', label: '$50.00 -> 5000 Tokens' },
+  { id: 'starter', label: '$1.00 -> 100 Tokens' },
+  { id: 'small', label: '$5.00 -> 600 Tokens' },
+  { id: 'medium', label: '$10.00 -> 1300 Tokens' },
+  { id: 'large', label: '$20.00 -> 2800 Tokens' },
 ];
 
 type Compliance = {

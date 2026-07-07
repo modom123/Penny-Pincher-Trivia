@@ -83,6 +83,25 @@ RADAR_SECRET_KEY                                           # geo verification (o
 ADMIN_USER_IDS                                             # legacy create-game gate (command center uses staff_roles instead)
 ```
 
+## ⚠️ Bonus-token economics — MUST resolve before real payments
+
+Token bundles grant **bonus tokens** (`$5 → 600`, `$10 → 1,300`, `$20 → 2,800`), but
+1 token still equals 1 cent of in-game and prize-pool value, and the wallet is currently
+withdrawable 1:1. As built, that creates two real problems:
+
+1. **Cash-out arbitrage** — a player could buy `$20 → 2,800` tokens, never play, and
+   withdraw $28.00. Free money out of the platform's pocket.
+2. **Pool solvency** — bonus tokens spent into rounds inflate the prize pool (denominated
+   in token-cents) above the real cash actually collected, so paying out 60% of the pool
+   can exceed the real USD taken in.
+
+**Recommended fix before enabling real deposits/withdrawals:** split the wallet into
+`purchased_balance` (cash-funded, withdrawable) and `promo_balance` (bonus tokens,
+play-only, non-withdrawable); spend promo first, and have `reserve_withdrawal` draw only
+from the purchased/cash-funded portion. This is a schema + `buy_round`/`reserve_withdrawal`
+change — flagged here rather than silently shipping the arbitrage. `[COUNSEL: also a
+disclosure/consumer-protection question — see legal/02-terms-of-service-DRAFT.md §3.1.]`
+
 ## What is deliberately NOT automated (needs a human)
 
 - Choosing/blocking states (legal call).
