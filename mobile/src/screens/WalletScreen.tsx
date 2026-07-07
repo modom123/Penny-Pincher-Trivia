@@ -212,8 +212,8 @@ export default function WalletScreen() {
         <Text style={styles.buttonText}>{canWithdraw ? 'Withdraw' : 'Withdrawal locked'}</Text>
       </Pressable>
 
-      {/* Dev-only self-credit is hidden on web so real-money soft-launch players
-          can't mint tokens. (Also revoke dev_credit_wallet before real money.) */}
+      {/* Dev-only self-credit is hidden on web. Server-side, dev_credit_wallet is
+          admin-staff only and credits non-withdrawable promo, so it can't mint cash. */}
       {!isWeb && (
         <Pressable style={styles.devButton} onPress={devCredit} disabled={busy}>
           {busy ? <ActivityIndicator color="#0f0f14" /> : <Text style={styles.buttonText}>Dev: +$10.00 (testing only)</Text>}

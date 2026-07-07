@@ -148,8 +148,9 @@ e.g. `pennypincher.app`. Then:
   **pre-Radar stopgap** for the controlled soft launch only — wire `RADAR_SECRET_KEY` +
   the vendor SDK before the public app-store launch, since `buy_round` is the hard
   enforcement point regardless.
-- The dev self-credit button is hidden on web. **Before real money, also revoke
-  `dev_credit_wallet`** so no one can mint tokens.
+- The dev self-credit button is hidden on web. `dev_credit_wallet` is also locked
+  down server-side: **admin staff only**, and it credits the non-withdrawable **promo**
+  balance (never withdrawable cash), so it can't be used to mint cashable money.
 
 The same `web-build` is what the Electron desktop shell wraps, so desktop and web stay
 in lockstep with iOS/Android.
