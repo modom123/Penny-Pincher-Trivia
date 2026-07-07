@@ -49,6 +49,40 @@ enter, the pot grows as players unlock rounds, and the top 3 scorers at round 10
   Privacy Policy/AML checklist - **not legal advice**, needs review by gaming/gambling
   counsel before publication (see `legal/00-READ-ME-FIRST.md`).
 
+## Questions, subjects & difficulty
+
+- **Subjects**: a 500-subject taxonomy (25 domains × 20) lives in the `subjects` table,
+  authored in `question-curator/taxonomy.js`. Questions and drafts carry a `subject_id`.
+- **Difficulty = school grade**: 20 levels, one grade per level, starting at 3rd grade
+  and going up a grade each level → `grade_level` **3–22** (3–12 school, 13–16 college,
+  17–22 graduate/expert). A 100-round game spends 5 rounds per grade level (20 × 5 = 100);
+  round → grade is the `round_grade_level(round)` function.
+- **Bank target**: 500 questions per subject = 25 at each grade level. Single-subject
+  games fill via `create_game_for_subject(subject_id)`; coverage is reported by
+  `subject_curation_status()`.
+- **Curator engine** (`question-curator/`): batch-generates the bank as *reviewable
+  drafts* (never straight to live), idempotent/resumable, with dedup + shape validation.
+  `make-contest.js` is the lean per-tournament path (100 questions on demand → publish).
+  See `question-curator/README.md`. Human approval via `promote_question_draft` is still
+  the fact-checking step.
+- **Command center**: the Question Bank page shows per-subject **curation coverage**
+  (`subject_curation_status()`); the Games page can **publish a themed contest** from any
+  contest-ready subject (`admin_create_subject_contest` → `create_game_for_subject`).
+
+## Design & UI
+
+The mobile client follows the game-design brief: a midnight dark theme with Electric
+Emerald (money/growth) and Neon Gold (jackpot/top-3) accents, shared via
+`mobile/src/theme.ts`. Three core screens:
+
+- **Lobby** — Penny Wallet top bar (balance + quick deposit) and live game cards
+  (mode, subject, prize pool, round).
+- **Active Arena** (`GameScreen`) — live prize-pool header, 1–100 progress tracker,
+  question card with a shrinking 12-second countdown, micro-debit "Unlock Round N
+  ($0.42)" action, and emerald/crimson answer feedback.
+- **Climax** (`ResultsScreen`) — gold/silver/bronze podium for the top 3, then the full
+  payout list.
+
 ## Game modes
 
 Set at game creation (`games.mode` enum), same underlying engine for all three:
@@ -79,14 +113,14 @@ client's):
 - **Wrong answer**: penalty of `−(round × 10)` — a wrong answer on round 80 costs far
   more than on round 1, mirroring the reward. No time component on the penalty.
 - **Total score is floored at 0** — deductions can't push a player negative.
-- **Risk premium (Streak Saver)**: a round you *paid* real cash to enter (broke your
-  streak) earns `1.5×` the base points if correct — you put capital on the line. Free
-  (streak) rounds earn base `1.0×`. Lets a player who fell behind buy their way back into
-  contention by playing perfectly under higher stakes.
-- **Tie-breaker — Wallet Efficiency Rating (WER)**: identical scores are broken by
-  `total_score / cents_spent / total_response_ms` — more points per cent, and faster,
-  wins. Sudden Death Overtime now only triggers on a true dead heat (equal score *and*
-  equal WER).
+- **No pay-to-win**: points come only from answering correctly. There is no bonus for
+  paying cash to enter a round — a wrong answer is never rewarded, only ever penalized.
+- **Tie-breaker — least cash spent**: identical scores are broken by the player who spent
+  *less* (`order by total_score desc, total_cash_spent_cents asc`) — pure skill on the
+  scoreboard, frugality decides the tie. This is the "penny pincher" edge: same trivia
+  score, the player who dropped fewer cents on mistakes wins. Sudden Death Overtime only
+  triggers on a true dead heat (equal score *and* equal cash spent). Read it via the
+  `get_game_leaderboard(game_id)` RPC.
 
 ## Running out of tokens
 

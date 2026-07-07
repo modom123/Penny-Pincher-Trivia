@@ -21,17 +21,49 @@ const MODE_LABELS: Record<GameMode, string> = {
   milestone_booster: 'Milestone Booster',
 };
 
+type ReadySubject = {
+  subject_id: string;
+  slug: string;
+  name: string;
+  domain: string;
+  min_per_grade: number;
+  ready: boolean;
+};
+
 export default function GamesPage() {
   const [games, setGames] = useState<Game[]>([]);
   const [newMode, setNewMode] = useState<GameMode>('original_escalator');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState<string | null>(null);
+  const [readySubjects, setReadySubjects] = useState<ReadySubject[]>([]);
+  const [contestSubject, setContestSubject] = useState('');
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.from('games').select('*').order('created_at', { ascending: false });
     if (!error && data) setGames(data as Game[]);
+
+    const { data: subs } = await supabase.rpc('subjects_ready_for_contest');
+    if (subs) setReadySubjects(subs as ReadySubject[]);
   }, []);
+
+  async function publishContest() {
+    if (!contestSubject) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const { data, error } = await supabase.rpc('admin_create_subject_contest', { p_subject_id: contestSubject });
+      if (error) throw error;
+      const g = Array.isArray(data) ? data[0] : data;
+      setMessage(`Themed contest published: game ${String(g.game_id).slice(0, 8)}… (pending — the engine will run it).`);
+      setContestSubject('');
+      await load();
+    } catch (err) {
+      setMessage(`Error: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   useEffect(() => {
     load();
@@ -139,6 +171,36 @@ export default function GamesPage() {
           </button>
         </div>
         {message && <p style={{ marginTop: 12 }}>{message}</p>}
+      </div>
+
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>Publish a themed contest</h3>
+        <p style={{ color: '#9a9aa5', fontSize: 13 }}>
+          Builds a 100-round game from a single subject (5 questions per grade level). Only subjects with ≥5 approved
+          questions at every grade level are ready. Generate the questions with the curator (
+          <code>question-curator</code>) first.
+        </p>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <select value={contestSubject} onChange={(e) => setContestSubject(e.target.value)} style={{ maxWidth: 320 }}>
+            <option value="">Select a ready subject…</option>
+            {readySubjects
+              .filter((s) => s.ready)
+              .map((s) => (
+                <option key={s.subject_id} value={s.subject_id}>
+                  {s.name} ({s.domain})
+                </option>
+              ))}
+          </select>
+          <button onClick={publishContest} disabled={busy || !contestSubject}>
+            + Publish contest
+          </button>
+        </div>
+        {readySubjects.filter((s) => s.ready).length === 0 && (
+          <p style={{ color: '#9a9aa5', marginTop: 10, fontSize: 13 }}>
+            No subjects are contest-ready yet. Use the curator to generate questions, approve them in the Question Bank,
+            then they'll appear here.
+          </p>
+        )}
       </div>
 
       <div className="card">

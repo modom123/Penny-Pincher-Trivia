@@ -23,6 +23,18 @@ type QuestionDraft = {
   created_at: string;
 };
 
+type SubjectCoverage = {
+  subject_id: string;
+  slug: string;
+  name: string;
+  domain: string;
+  target_question_count: number;
+  approved_count: number;
+  pending_count: number;
+  rejected_count: number;
+  grade_levels_covered: number;
+};
+
 const emptyForm = {
   question_id: null as string | null,
   question_text: '',
@@ -48,6 +60,8 @@ export default function QuestionsPage() {
   const [genRoundEnd, setGenRoundEnd] = useState(10);
   const [genBusy, setGenBusy] = useState(false);
   const [genMessage, setGenMessage] = useState<string | null>(null);
+  const [coverage, setCoverage] = useState<SubjectCoverage[]>([]);
+  const [coverageFilter, setCoverageFilter] = useState('');
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -63,6 +77,9 @@ export default function QuestionsPage() {
       .eq('status', 'pending_review')
       .order('created_at', { ascending: false });
     if (draftData) setDrafts(draftData as QuestionDraft[]);
+
+    const { data: cov } = await supabase.rpc('subject_curation_status');
+    if (cov) setCoverage(cov as SubjectCoverage[]);
   }, []);
 
   useEffect(() => {
@@ -158,9 +175,65 @@ export default function QuestionsPage() {
     (q) => !filter || q.question_text.toLowerCase().includes(filter.toLowerCase()) || String(q.difficulty_level) === filter
   );
 
+  const readyCount = coverage.filter((c) => c.grade_levels_covered >= 20).length;
+  const coverageShown = coverage.filter(
+    (c) => !coverageFilter || c.name.toLowerCase().includes(coverageFilter.toLowerCase()) || c.domain.toLowerCase().includes(coverageFilter.toLowerCase())
+  );
+
   return (
     <div>
       <h2>Question Bank</h2>
+
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>Curation coverage</h3>
+        <p style={{ color: '#9a9aa5', fontSize: 13 }}>
+          Target: 500 approved questions/subject (25 per grade level × 20 grades). A subject is contest-ready once all
+          20 grade levels have questions. <strong>{readyCount}</strong> of <strong>{coverage.length}</strong> subjects
+          ready.
+        </p>
+        <input
+          placeholder="Filter subjects by name or domain"
+          value={coverageFilter}
+          onChange={(e) => setCoverageFilter(e.target.value)}
+          style={{ marginBottom: 12 }}
+        />
+        <table>
+          <thead>
+            <tr>
+              <th>Subject</th>
+              <th>Domain</th>
+              <th>Approved / Target</th>
+              <th>Grades</th>
+              <th>Pending</th>
+            </tr>
+          </thead>
+          <tbody>
+            {coverageShown.slice(0, 60).map((c) => {
+              const pct = Math.min(100, Math.round((c.approved_count / c.target_question_count) * 100));
+              const ready = c.grade_levels_covered >= 20;
+              return (
+                <tr key={c.subject_id}>
+                  <td>{c.name}</td>
+                  <td style={{ color: '#9a9aa5' }}>{c.domain}</td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ flex: 1, height: 8, background: '#1c1c24', borderRadius: 4, overflow: 'hidden', minWidth: 80 }}>
+                        <div style={{ width: `${pct}%`, height: 8, background: ready ? '#12E29A' : '#FFD23F' }} />
+                      </div>
+                      <span style={{ fontSize: 12, color: '#9a9aa5' }}>
+                        {c.approved_count}/{c.target_question_count}
+                      </span>
+                    </div>
+                  </td>
+                  <td style={{ color: ready ? '#12E29A' : '#9a9aa5' }}>{c.grade_levels_covered}/20</td>
+                  <td>{c.pending_count}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {coverage.length === 0 && <p style={{ color: '#9a9aa5' }}>No subjects seeded yet. Run the subjects seed migration.</p>}
+      </div>
 
       <div className="card">
         <h3 style={{ marginTop: 0 }}>{form.question_id ? 'Edit question' : 'Add question'}</h3>
