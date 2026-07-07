@@ -1,0 +1,18 @@
+{
+  "name": "penny-pincher-question-curator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Batch curator engine: fills the trivia bank to 500 questions/subject (25 per grade level x 20 grades) as reviewable drafts.",
+  "type": "commonjs",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "build:seed": "node build-seed.js",
+    "curate": "node curate.js",
+    "curate:all": "node curate.js --all",
+    "smoke": "node curate.js --all --limit-subjects 1 --dry-run"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5"
+  }
+}

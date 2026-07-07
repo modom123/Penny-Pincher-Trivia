@@ -44,6 +44,22 @@ enter, the pot grows as players unlock rounds, and the top 3 scorers at round 10
   Privacy Policy/AML checklist - **not legal advice**, needs review by gaming/gambling
   counsel before publication (see `legal/00-READ-ME-FIRST.md`).
 
+## Questions, subjects & difficulty
+
+- **Subjects**: a 500-subject taxonomy (25 domains × 20) lives in the `subjects` table,
+  authored in `question-curator/taxonomy.js`. Questions and drafts carry a `subject_id`.
+- **Difficulty = school grade**: 20 levels, one grade per level, starting at 3rd grade
+  and going up a grade each level → `grade_level` **3–22** (3–12 school, 13–16 college,
+  17–22 graduate/expert). A 100-round game spends 5 rounds per grade level (20 × 5 = 100);
+  round → grade is the `round_grade_level(round)` function.
+- **Bank target**: 500 questions per subject = 25 at each grade level. Single-subject
+  games fill via `create_game_for_subject(subject_id)`; coverage is reported by
+  `subject_curation_status()`.
+- **Curator engine** (`question-curator/`): batch-generates the bank as *reviewable
+  drafts* (never straight to live), idempotent/resumable, with dedup + shape validation.
+  See `question-curator/README.md`. Human approval via `promote_question_draft` is still
+  the fact-checking step.
+
 ## Game modes
 
 Set at game creation (`games.mode` enum), same underlying engine for all three:
