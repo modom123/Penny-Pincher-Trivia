@@ -85,7 +85,21 @@ export default function GameScreen({ route, navigation }: Props) {
     if (!round) return;
     const { data, error } = await supabase.rpc('buy_round', { p_game_id: gameId, p_round_number: round.roundNumber });
     if (error) {
-      Alert.alert("Couldn't buy round", error.message);
+      // Needing to top up (rounds 1-30) surfaces as a TOP_UP_REQUIRED error -
+      // send the player to the wallet to add funds, then they can retry the round.
+      if (error.message.includes('TOP_UP_REQUIRED')) {
+        Alert.alert('Top up to continue', "You don't have enough tokens for this round. Add funds to keep playing.", [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Go to Wallet', onPress: () => navigation.navigate('Wallet') },
+        ]);
+      } else {
+        Alert.alert("Couldn't buy round", error.message.replace(/^[A-Z_]+:\s*/, ''));
+      }
+      return;
+    }
+    // Round 31+ with insufficient funds returns gameOver instead of an error.
+    if (data?.gameOver) {
+      Alert.alert('Game over', data.message, [{ text: 'OK', onPress: () => navigation.replace('Lobby') }]);
       return;
     }
     setStreakFree(Boolean(data?.streakFree));

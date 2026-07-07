@@ -75,6 +75,22 @@ client's):
   more than on round 1, mirroring the reward. No time component on the penalty.
 - **Total score is floored at 0** — deductions can't push a player negative.
 
+## Running out of tokens
+
+The wallet never goes negative. When you can't afford the next round's entry cost
+(`buy_round`):
+
+- **Rounds 1–30 (top-up window)**: you're blocked with `TOP_UP_REQUIRED` but *not*
+  eliminated — add funds and continue. The mobile app routes you to the Wallet.
+- **Round 31+ (window closed)**: the first round you can't afford ends your game —
+  you're marked `is_eliminated` and dropped from prize contention (`buy_round` returns
+  `gameOver: true`). The top-up cutoff is the `v_top_up_window_last_round` constant (30).
+
+> Note: this "pause to top up" rule is enforced correctly at the DB layer, but the live
+> game loop advances rounds on a shared countdown — so in the real-time modes a player
+> realistically needs to top up *between* games or very fast, not mid-countdown. Worth
+> confirming the intended pacing (turn-based vs. live) for the top-up flow to feel fair.
+
 ## Anti-cheat
 
 - The server's clock is the only source of truth for timing - `submit_answer` computes
