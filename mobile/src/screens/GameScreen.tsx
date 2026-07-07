@@ -125,7 +125,7 @@ export default function GameScreen({ route, navigation }: Props) {
   function updatePool(next: number) {
     setPrizePoolCents((prev) => {
       if (next > prev) {
-        // "tick upward" pulse when the jackpot grows
+        // "tick upward" pulse when the prize pool grows
         Animated.sequence([
           Animated.timing(poolPulse, { toValue: 1.12, duration: 120, useNativeDriver: true }),
           Animated.spring(poolPulse, { toValue: 1, useNativeDriver: true }),

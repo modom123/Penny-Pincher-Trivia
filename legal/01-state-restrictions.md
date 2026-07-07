@@ -45,20 +45,27 @@ requirements are satisfied. This repo's Terms of Service draft assumes that appr
 references a `[COUNSEL: insert approved state list]` placeholder rather than asserting
 which states are safe.
 
-## Enforcement mechanism this needs (not yet built)
+## Enforcement mechanism this needs (now built — see LAUNCH-CHECKLIST.md §3)
 
-An allowlist in a Terms of Service document does nothing on its own. Before real money
-is enabled, the product needs:
+An allowlist in a Terms of Service document does nothing on its own. The three controls
+below are now **built and enforced at the database layer** (`buy_round` in
+`supabase/migrations/`), so a client cannot bypass them. What remains is a vendor key and
+counsel's per-state answers, not engineering:
 
-1. **IP-based geolocation** at minimum, ideally combined with device GPS on mobile,
-   re-checked periodically during play (not just at signup) - this is standard practice
-   for DFS/skill-contest apps and is often a regulatory expectation, not just a
-   nice-to-have.
-2. **Address/ID verification** at withdrawal time at the latest (ties into KYC, see
+1. **Device/IP geolocation, re-checked during play** — ✅ built. The `geo-check` edge fn
+   records a verified region (`set_verified_region`); the mobile client calls it on
+   `RegionGate` and on `GameScreen` mount, not just at signup. Anti-spoof is enforced via
+   Radar's signed verified-location JWT when `RADAR_JWT_SECRET` is set (🔌 supply the key
+   + install `react-native-radar` on device builds).
+2. **Address/ID verification at withdrawal** — ✅ built. `reserve_withdrawal` blocks any
+   payout until `kyc_status = 'verified'` and the player is 18+ (ties into KYC, see
    `05-responsible-play-and-aml.md`).
-3. A `blocked_states` config the admin/command-center can update without an app release,
-   since legal status changes over time and per-state rules can change faster than a
-   mobile app store review cycle.
+3. **Admin-editable `allowed_states` / `blocked_states` config** — ✅ built. Both lists
+   live in `platform_config` and are editable from the command center's Compliance page
+   (`admin_update_allowed_states` / `admin_update_blocked_states`) with no app release.
+   The build defaults to an **allowlist** (default-block every region), seeded to the
+   launch set TX, CA, NY, OH, PA.
 
-None of this exists in the current build. It should be scoped as its own workstream
-before this app can legally accept real payments from the general public.
+The engineering enforcement exists. What still gates real payments from the general
+public is **counsel's answer on which states to turn on** (the allowlist above is an
+engineering default, not a legal clearance) and the vendor keys noted above.
