@@ -74,14 +74,14 @@ client's):
 - **Wrong answer**: penalty of `−(round × 10)` — a wrong answer on round 80 costs far
   more than on round 1, mirroring the reward. No time component on the penalty.
 - **Total score is floored at 0** — deductions can't push a player negative.
-- **Risk premium (Streak Saver)**: a round you *paid* real cash to enter (broke your
-  streak) earns `1.5×` the base points if correct — you put capital on the line. Free
-  (streak) rounds earn base `1.0×`. Lets a player who fell behind buy their way back into
-  contention by playing perfectly under higher stakes.
-- **Tie-breaker — Wallet Efficiency Rating (WER)**: identical scores are broken by
-  `total_score / cents_spent / total_response_ms` — more points per cent, and faster,
-  wins. Sudden Death Overtime now only triggers on a true dead heat (equal score *and*
-  equal WER).
+- **No pay-to-win**: points come only from answering correctly. There is no bonus for
+  paying cash to enter a round — a wrong answer is never rewarded, only ever penalized.
+- **Tie-breaker — least cash spent**: identical scores are broken by the player who spent
+  *less* (`order by total_score desc, total_cash_spent_cents asc`) — pure skill on the
+  scoreboard, frugality decides the tie. This is the "penny pincher" edge: same trivia
+  score, the player who dropped fewer cents on mistakes wins. Sudden Death Overtime only
+  triggers on a true dead heat (equal score *and* equal cash spent). Read it via the
+  `get_game_leaderboard(game_id)` RPC.
 
 ## Running out of tokens
 
