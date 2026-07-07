@@ -32,6 +32,11 @@ enter, the pot grows as players unlock rounds, and the top 3 scorers at round 10
   for auth, RPC calls, and Realtime.
 - **Desktop app** (`desktop/`): Electron shell around a `react-native-web` export of the
   *same* mobile codebase - one game client, three targets (iOS/Android/desktop).
+- **Web MVP (soft launch)**: the same mobile codebase also exports to a responsive
+  browser app (`cd mobile && npm run build:web` → static `mobile/web-build/`). This is
+  Step 2 of the launch playbook — players in TX/CA open it in Safari/Chrome, sign in,
+  fund their wallet via Stripe, and play, with no app-store review. See
+  [Web MVP deployment](#web-mvp-soft-launch-deployment).
 - **Internal command center** (`command-center/`): React/Vite staff dashboard - game
   creation/monitoring/force-payout, question bank CRUD, financial ledger browser,
   compliance tools (anti-cheat review, account suspend, blocked-states config), support
@@ -118,6 +123,36 @@ inflate real payouts:
 - **Per-game buy-in limits**: `games.min_buy_in_tokens` (must *hold* ≥ MIN to join —
   `MIN_BUYIN_REQUIRED`) and `games.max_buy_in_tokens` (cumulative token-spend cap —
   `MAX_BUYIN_REACHED`); null = no limit.
+
+## Web MVP (soft launch) deployment
+
+The launch playbook does a **web MVP first** (real revenue + load-testing with local
+TX/CA players before app-store review). The player web app is the mobile Expo codebase
+exported for the browser:
+
+```bash
+cd mobile
+npm install
+npm run build:web        # -> static site in mobile/web-build/
+```
+
+Host `mobile/web-build/` on any static host (Vercel/Netlify/Cloudflare Pages/S3) at
+e.g. `pennypincher.app`. Then:
+
+- Set the `create-checkout-session` edge function's `APP_PUBLIC_URL` secret to that
+  origin so Stripe's success/cancel URLs return players to the app. On web the Wallet
+  screen sends players straight to Stripe Checkout and syncs the credited balance back
+  on return (webhook → Realtime).
+- **Region**: the app shows a location gate (`RegionGate`) so a verified soft-launch
+  tester can declare TX/CA, which calls `geo-check` → `set_verified_region`. This is a
+  **pre-Radar stopgap** for the controlled soft launch only — wire `RADAR_SECRET_KEY` +
+  the vendor SDK before the public app-store launch, since `buy_round` is the hard
+  enforcement point regardless.
+- The dev self-credit button is hidden on web. **Before real money, also revoke
+  `dev_credit_wallet`** so no one can mint tokens.
+
+The same `web-build` is what the Electron desktop shell wraps, so desktop and web stay
+in lockstep with iOS/Android.
 
 ## Anti-cheat
 

@@ -39,7 +39,7 @@ human decision before real money and the public app stores are involved.
 
 | Item | Status | Where |
 |---|---|---|
-| Launch **whitelist**: play allowed ONLY in TX, CA, NY, OH, PA | ✅ | `buy_round` enforces `platform_config.allowed_states` (seeded to the 5 launch states); every other region raises `REGION_BLOCKED` by default |
+| Launch **whitelist**: play allowed ONLY in the whitelisted states | ✅ | `buy_round` enforces `platform_config.allowed_states`. **Soft launch = TX, CA** (narrowed via command center); NY/OH/PA queued for wider rollout. Every other region raises `REGION_BLOCKED` by default |
 | Buy-in blocked in restricted states (denylist override) | ✅ | `buy_round` also honours `blocked_states` on top of the whitelist |
 | Buy-in blocked when location never verified | ✅ | `buy_round` raises `LOCATION_REQUIRED` on null region |
 | Admin-editable allow/block lists (no app release needed) | ✅ | Command center → Compliance → Allowed states (`admin_update_allowed_states`) + Blocked states (`admin_update_blocked_states`) |

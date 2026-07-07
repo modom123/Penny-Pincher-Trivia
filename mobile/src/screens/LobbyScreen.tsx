@@ -4,6 +4,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import RegionGate from '../components/RegionGate';
 import type { RootStackParamList } from '../types';
 
 type GameMode = 'original_escalator' | 'streak_saver' | 'milestone_booster';
@@ -59,6 +60,8 @@ export default function LobbyScreen() {
       <Pressable style={styles.walletLink} onPress={() => navigation.navigate('Wallet')}>
         <Text style={styles.walletLinkText}>Wallet</Text>
       </Pressable>
+
+      <RegionGate />
 
       <FlatList
         data={games}

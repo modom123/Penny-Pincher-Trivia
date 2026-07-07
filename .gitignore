@@ -6,3 +6,7 @@ dist/
 *.log
 *.tsbuildinfo
 .DS_Store
+
+# Expo web export (build artifact)
+mobile/web-build/
+desktop/web-build/

@@ -1,7 +1,9 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Alert, ActivityIndicator, ScrollView, TextInput } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, Pressable, StyleSheet, Alert, ActivityIndicator, ScrollView, TextInput, Platform, Linking } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
+
+const isWeb = Platform.OS === 'web';
 
 const BUNDLES = [
   { id: 'starter', label: '$1.00 -> 100 Tokens' },
@@ -43,12 +45,36 @@ export default function WalletScreen() {
     }, [load])
   );
 
+  // Returning from Stripe Checkout on web (…/wallet/success?session_id=…): the
+  // webhook credits asynchronously, so poll a couple of times to reflect the new
+  // balance, then clean the URL.
+  useEffect(() => {
+    if (!isWeb || typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get('session_id') && !window.location.pathname.includes('/wallet/success')) return;
+    let tries = 0;
+    const iv = setInterval(async () => {
+      tries += 1;
+      await load();
+      if (tries >= 4) clearInterval(iv);
+    }, 1500);
+    window.history.replaceState({}, '', window.location.pathname.replace('/wallet/success', '/'));
+    return () => clearInterval(iv);
+  }, [load]);
+
   async function buyBundle(bundleId: string) {
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout-session', { body: { bundleId } });
       if (error) throw error;
-      Alert.alert('Checkout', `Open this URL to complete payment:\n${data.checkoutUrl}`);
+      // Web-to-app funding (the launch playbook's "payment loophole"): send the
+      // player to Stripe Checkout in the browser; the webhook credits the wallet
+      // and Supabase Realtime syncs the balance back into the app on return.
+      if (isWeb && typeof window !== 'undefined') {
+        window.location.assign(data.checkoutUrl);
+      } else {
+        Linking.openURL(data.checkoutUrl);
+      }
     } catch (err) {
       Alert.alert('Checkout failed', (err as Error).message);
     } finally {
@@ -186,9 +212,13 @@ export default function WalletScreen() {
         <Text style={styles.buttonText}>{canWithdraw ? 'Withdraw' : 'Withdrawal locked'}</Text>
       </Pressable>
 
-      <Pressable style={styles.devButton} onPress={devCredit} disabled={busy}>
-        {busy ? <ActivityIndicator color="#0f0f14" /> : <Text style={styles.buttonText}>Dev: +$10.00 (testing only)</Text>}
-      </Pressable>
+      {/* Dev-only self-credit is hidden on web so real-money soft-launch players
+          can't mint tokens. (Also revoke dev_credit_wallet before real money.) */}
+      {!isWeb && (
+        <Pressable style={styles.devButton} onPress={devCredit} disabled={busy}>
+          {busy ? <ActivityIndicator color="#0f0f14" /> : <Text style={styles.buttonText}>Dev: +$10.00 (testing only)</Text>}
+        </Pressable>
+      )}
     </ScrollView>
   );
 }
