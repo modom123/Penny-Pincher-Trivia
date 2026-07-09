@@ -7,7 +7,8 @@ function createWindow() {
     height: 850,
     minWidth: 380,
     minHeight: 640,
-    title: 'Penny Pincher',
+    title: 'Penny Pinching Trivia',
+    icon: path.join(__dirname, 'icon.png'),
     backgroundColor: '#0f0f14',
     webPreferences: {
       contextIsolation: true,

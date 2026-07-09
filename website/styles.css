@@ -62,7 +62,9 @@ img{max-width:100%}
   background:rgba(255,255,255,.82);backdrop-filter:blur(10px);
   border-bottom:1px solid rgba(31,111,240,.1);
 }
-.brand{font-family:var(--font-display);font-weight:700;font-size:1.5rem;letter-spacing:.3px}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:700;font-size:1.5rem;letter-spacing:.3px}
+.brand:hover{text-decoration:none}
+.brand-mark{width:34px;height:34px;border-radius:9px;box-shadow:0 3px 8px rgba(21,50,120,.25)}
 .brand-penny{color:var(--pink)}
 .brand-pinch{color:var(--gold-2);margin-left:2px}
 .site-header nav{display:flex;align-items:center;gap:clamp(10px,2vw,26px)}
@@ -78,13 +80,16 @@ img{max-width:100%}
 /* ===== HERO ===== */
 .hero{position:relative;z-index:1;
   background:
-    radial-gradient(1200px 600px at 15% -10%,rgba(255,255,255,.28),transparent 60%),
-    linear-gradient(160deg,var(--blue-1),var(--blue-2) 55%,var(--blue-3));
+    radial-gradient(1100px 560px at 78% 42%,#1f8bff,transparent 62%),
+    linear-gradient(165deg,#2ba4ff,#1a74f5 58%,#1657da);
   color:#fff;padding:clamp(34px,6vw,72px) clamp(16px,5vw,54px) clamp(60px,8vw,96px);
   overflow:hidden;
 }
 .hero-inner{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:1.05fr .95fr;
   gap:clamp(26px,5vw,64px);align-items:center}
+
+/* real logo image (feathered edges melt into the hero blue) */
+.hero-logo{display:block;width:100%;max-width:560px;height:auto;margin:-8px 0 6px -10px}
 
 /* CSS wordmark that echoes the logo */
 .wordmark{font-family:var(--font-display);font-weight:700;line-height:.92;

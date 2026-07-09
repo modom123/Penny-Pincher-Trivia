@@ -24,7 +24,12 @@ export default function LoginPage() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center' }}>
       <form onSubmit={submit} className="card" style={{ width: 320 }}>
-        <h2 style={{ marginTop: 0 }}>Command Center</h2>
+        <img
+          src="/logo.png"
+          alt="Penny Pinching Trivia"
+          style={{ display: 'block', width: '100%', maxWidth: 240, margin: '0 auto 8px' }}
+        />
+        <h2 style={{ marginTop: 0, textAlign: 'center' }}>Command Center</h2>
         {session && isStaff === false && (
           <p style={{ color: '#ef4444' }}>Signed in, but this account has no staff role. Ask an admin to grant one.</p>
         )}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, Alert, Image } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function AuthScreen() {
@@ -29,7 +29,7 @@ export default function AuthScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Penny Pincher</Text>
+      <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
       <Text style={styles.subtitle}>{mode === 'signIn' ? 'Sign in' : 'Create an account'}</Text>
 
       {mode === 'signUp' && (
@@ -72,6 +72,7 @@ export default function AuthScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#0f0f14' },
+  logo: { width: '90%', maxWidth: 300, height: 150, alignSelf: 'center', marginBottom: 8 },
   title: { fontSize: 32, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 4 },
   subtitle: { fontSize: 16, color: '#9a9aa5', textAlign: 'center', marginBottom: 24 },
   input: {

@@ -5,21 +5,33 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1160f0"
+    },
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.pennypincher.trivia"
+      "bundleIdentifier": "com.pennypincher.trivia",
+      "icon": "./assets/icon.png"
     },
     "android": {
-      "package": "com.pennypincher.trivia"
+      "package": "com.pennypincher.trivia",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1160f0"
+      }
     },
     "web": {
       "bundler": "metro",
-      "name": "Penny Pincher",
-      "shortName": "PennyPincher",
+      "name": "Penny Pinching Trivia",
+      "shortName": "PennyPinching",
+      "favicon": "./assets/favicon.png",
       "backgroundColor": "#0b0f1a",
-      "themeColor": "#0b0f1a",
-      "description": "Penny Pincher — a 100-round progressive skill-trivia contest. Play from TX & CA."
+      "themeColor": "#1160f0",
+      "description": "Penny Pinching Trivia — a 100-round progressive skill-trivia contest. Play from TX & CA."
     },
     "extra": {
       "supabaseUrl": "https://pkvdthwqvjpxhqorfpub.supabase.co",
