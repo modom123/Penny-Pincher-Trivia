@@ -37,13 +37,14 @@ monetization model, without a definitive answer to this question per target stat
   this variable-cost structure changes the AMOE analysis above.]`
 
 ### Game 3: Milestone Booster
-- Entry cost: flat per-tier pricing (Bronze/Silver/Gold/Platinum, `[OPS: insert exact
-  tier boundaries and prices]`).
-- At Rounds 25, 50, and 75, the platform injects a guaranteed bonus into the prize pool.
-  `[COUNSEL: a platform-funded "guaranteed bonus" injected into the pot - as opposed to
-  a bonus funded purely by player entry fees - may itself raise questions (e.g., is the
-  platform now offering a prize independent of any entry fee, and does that trigger
-  sweepstakes/AMOE rules on its own?). Needs specific review before this mode is built.]`
+- Entry cost: flat per-tier pricing (Bronze rounds 1-25 = $0.10, Silver 26-50 = $0.25,
+  Gold 51-75 = $0.50, Platinum 76-100 = $1.00).
+- Prize pool is funded **solely by player entry fees** (60% pool / 40% platform fee),
+  identical to the other two modes. There is **no** platform-funded prize injection.
+  `[HISTORY: an earlier design injected a platform-funded "guaranteed bonus" into the pot
+  at rounds 25/50/75. That was removed because a platform-funded prize - as opposed to
+  one funded purely by entry fees - could raise its own sweepstakes/AMOE classification
+  question. This mode is now a pure skill-contest pricing variant.]`
 
 ### Sudden Death Overtime (applies to all three modes)
 - Triggered only if two or more players are tied for a top-3 finishing position at

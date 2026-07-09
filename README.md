@@ -91,12 +91,13 @@ Set at game creation (`games.mode` enum), same underlying engine for all three:
 - **Streak Saver** - a correct answer waives the *next* round's entry fee entirely;
   a wrong answer resumes normal pricing. Average spend is lower, but "play free if
   you're right" is a stronger virality hook.
-- **Milestone Booster** - flat per-tier pricing (Bronze 1-25 / Silver 26-50 / Gold
-  51-75 / Platinum 76-100), plus a platform-funded $5 bonus injected into the prize
-  pool at rounds 25/50/75. **Flagged in `legal/03-official-rules-DRAFT.md`**: a
-  platform-funded (not just entry-fee-funded) bonus may raise its own sweepstakes-
-  classification question - get counsel's sign-off before enabling this mode for real
-  money.
+- **Milestone Booster** - flat per-tier pricing (Bronze 1-25 = 10¢ / Silver 26-50 = 25¢
+  / Gold 51-75 = 50¢ / Platinum 76-100 = $1.00). The prize pool is funded **solely by
+  player entry fees** (60/40), the same as the other modes. An earlier design added a
+  platform-funded $5 bonus at rounds 25/50/75; that was **removed** (migration
+  `20260709000000_milestone_booster_drop_platform_bonus.sql`) because a platform-funded
+  prize could raise its own sweepstakes-classification question - so this mode is now a
+  pure skill-contest pricing variant.
 
 **Sudden Death Overtime**: if 2+ players are tied for a top-3 finish at round 100,
 `payout_game` doesn't pay out - it opens overtime rounds (flat $1 fee, shrinking timer

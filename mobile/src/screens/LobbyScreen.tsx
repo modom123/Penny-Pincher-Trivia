@@ -24,7 +24,7 @@ type Game = {
 const MODE_META: Record<GameMode, { label: string; tag: string }> = {
   original_escalator: { label: 'The Escalator', tag: 'Round N costs N¢' },
   streak_saver: { label: 'Streak Saver', tag: 'Play free with a streak' },
-  milestone_booster: { label: 'Milestone Booster', tag: 'Pot boosts at 25/50/75' },
+  milestone_booster: { label: 'Milestone Booster', tag: 'Flat tiers: Bronze→Platinum' },
 };
 
 export default function LobbyScreen() {
