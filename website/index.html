@@ -3,103 +3,192 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Penny Pincher Trivia</title>
+  <title>Penny Pinching Trivia — Play smart. Win the pot.</title>
+  <meta name="description" content="A 100-round trivia showdown where round 1 costs a penny and the sharpest, fastest players split the pot. Try a question free right now." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
-  <header>
-    <div class="logo">Penny Pincher</div>
+<body class="home">
+  <div class="bubbles" aria-hidden="true">
+    <span></span><span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span><span></span>
+  </div>
+
+  <header class="site-header">
+    <a class="brand" href="#top">
+      <span class="brand-penny">Penny</span><span class="brand-pinch">Pinching</span>
+    </a>
     <nav>
-      <a href="#games">Games</a>
+      <a href="#play">Play a question</a>
+      <a href="#modes">Game modes</a>
+      <a href="#how">How it works</a>
       <a href="#tokens">Tokens</a>
-      <a href="legal/official-rules.html">Official Rules</a>
-      <a href="legal/terms.html">Terms</a>
-      <a href="legal/privacy.html">Privacy</a>
+      <a class="nav-cta" href="#get">Play now</a>
     </nav>
   </header>
 
-  <section class="hero">
-    <h1>Penny Pincher</h1>
-    <p class="tagline">A trivia contest where round 1 costs a penny and round 100 costs a dollar &mdash; and the pot pays out to the sharpest, fastest players.</p>
-    <div class="cta-row">
-      <a class="button" href="#">Get it on the App Store</a>
-      <a class="button secondary" href="#">Get it on Google Play</a>
+  <main id="top">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero-inner">
+        <div class="hero-copy">
+          <div class="wordmark" role="img" aria-label="Penny Pinching Trivia">
+            <span class="wm-penny">Penny</span>
+            <span class="wm-pinch">Pinching</span>
+            <span class="wm-trivia">Trivia</span>
+          </div>
+          <p class="tagline">Round 1 costs a <b>penny</b>. Round 100 costs a <b>dollar</b>.
+            The smartest, fastest players split the pot. 💸</p>
+          <div class="cta-row">
+            <a class="btn btn-gold" href="#play">🎮 Try a question free</a>
+            <a class="btn btn-ghost" href="#get">Play for real →</a>
+          </div>
+          <div class="trust-chips">
+            <span>⚡ 100 rounds</span>
+            <span>🧠 Skill-based</span>
+            <span>🏆 Top 3 win cash</span>
+          </div>
+        </div>
+
+        <!-- LIVE TRIVIA DEMO -->
+        <div class="demo" id="play">
+          <div class="demo-card" id="triviaCard">
+            <div class="demo-top">
+              <span class="demo-badge" id="qSubject">Warming up…</span>
+              <span class="demo-round" id="qRound">Round 7 · $0.07</span>
+            </div>
+            <div class="timerbar"><i id="timerFill"></i></div>
+            <h2 class="demo-q" id="qText">Tap “Start” to try a real question.</h2>
+            <div class="demo-options" id="qOptions"></div>
+            <div class="demo-foot">
+              <div class="demo-score" id="qScore">Score: 0 / 0</div>
+              <button class="btn btn-blue btn-sm" id="qBtn">▶ Start</button>
+            </div>
+            <p class="demo-note" id="qNote">No sign-up. Just a taste of the real game.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DISCLAIMER STRIP -->
+    <div class="disclaimer">
+      🎯 Penny Pinching Trivia is a <b>skill-based</b> contest with real-money entry fees and cash prizes.
+      Not available in all jurisdictions · Must be of legal age · Play responsibly. See the
+      <a href="legal/official-rules.html">Official Rules</a>.
     </div>
-  </section>
 
-  <div class="disclaimer">
-    Penny Pincher is a skill-based contest with real-money entry fees and cash prizes.
-    Not available in all jurisdictions. Must be of legal age. See our
-    <a href="legal/official-rules.html">Official Rules</a> for eligibility, odds, and prize details.
-    Play responsibly.
-  </div>
+    <!-- MODES -->
+    <section class="section" id="modes">
+      <h2 class="section-title">Three ways to play <span class="squig"></span></h2>
+      <p class="section-sub">Same brain, different thrill. Pick your vibe.</p>
+      <div class="card-grid">
+        <div class="fun-card pink">
+          <div class="fun-emoji">📈</div>
+          <h3>Flat-Rate Escalator</h3>
+          <p class="vibe">Pure, predictable competition.</p>
+          <p>Every round costs its round number in cents — Round 1 is a penny, Round 100 is a dollar. Everyone who reaches the end paid exactly the same.</p>
+        </div>
+        <div class="fun-card gold">
+          <div class="fun-emoji">🔥</div>
+          <h3>Streak Saver</h3>
+          <p class="vibe">Play free if you're smart enough.</p>
+          <p>Answer correctly and the next round is <b>free</b>. Only a wrong answer costs you — get it wrong and it stings your score <i>and</i> your wallet.</p>
+        </div>
+        <div class="fun-card cyan">
+          <div class="fun-emoji">🚀</div>
+          <h3>Milestone Booster</h3>
+          <p class="vibe">Game-show energy.</p>
+          <p>Flat per-tier pricing from Bronze to Platinum, with guaranteed prize bonuses dropped in at Rounds 25, 50 &amp; 75 as the field narrows.</p>
+        </div>
+      </div>
+    </section>
 
-  <section class="section" id="games">
-    <h2>Three ways to play</h2>
-    <div class="card-grid">
-      <div class="card">
-        <h3>Flat-Rate Escalator</h3>
-        <p class="vibe">Pure, predictable competition.</p>
-        <p>Every round costs its round number in cents &mdash; Round 1 is a penny, Round 100 is a dollar. Everyone who reaches the end has paid exactly the same amount.</p>
+    <!-- HOW IT WORKS -->
+    <section class="section band" id="how">
+      <h2 class="section-title">How it works</h2>
+      <p class="section-sub">Three steps to the pot.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Load tokens</h3>
+          <p>Grab a token bundle to unlock rounds as you climb. Bigger bundles stack bonus tokens.</p>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>Answer fast, answer right</h3>
+          <p>Every question is timed. Correct scores points; <b>speed</b> earns a bonus. Our servers keep the clock — never your phone.</p>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Top 3 split the pot</h3>
+          <p>60% of all entry fees becomes the prize pool, split <b>50/30/20</b> between 1st, 2nd &amp; 3rd at Round 100.</p>
+        </div>
       </div>
-      <div class="card">
-        <h3>Streak Saver</h3>
-        <p class="vibe">Play for free if you're smart enough.</p>
-        <p>Answer correctly and the next round is free. Only a wrong answer costs you &mdash; getting a question wrong doesn't just hurt your score, it costs real money.</p>
-      </div>
-      <div class="card">
-        <h3>Milestone Booster</h3>
-        <p class="vibe">High-stakes game show energy.</p>
-        <p>Flat per-tier pricing from Bronze to Platinum, with guaranteed prize bonuses injected at Rounds 25, 50, and 75 as the field narrows.</p>
-      </div>
-    </div>
-  </section>
 
-  <section class="section">
-    <h2>How it works</h2>
-    <div class="card-grid">
-      <div class="card">
-        <h3>1. Load tokens</h3>
-        <p>Buy a token bundle to unlock rounds as you play &mdash; bigger bundles get bonus tokens.</p>
+      <div class="pot-visual">
+        <div class="pot-round"><span>Round 1</span><b>1¢</b></div>
+        <div class="pot-dots">· · · · · · · · · ·</div>
+        <div class="pot-round"><span>Round 50</span><b>50¢</b></div>
+        <div class="pot-dots">· · · · · · · · · ·</div>
+        <div class="pot-round win"><span>Round 100</span><b>$1.00 🏆</b></div>
       </div>
-      <div class="card">
-        <h3>2. Answer fast, answer right</h3>
-        <p>Every question is timed. Correct answers score points; speed earns a bonus. Our servers keep time, not your phone.</p>
-      </div>
-      <div class="card">
-        <h3>3. Top 3 split the pot</h3>
-        <p>60% of everyone's entry fees becomes the prize pool, split 50/30/20 between 1st, 2nd, and 3rd place at Round 100.</p>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <section class="section" id="tokens">
-    <h2>Token bundles</h2>
-    <div class="card-grid">
-      <div class="card">
-        <h3>$1.00</h3>
-        <p class="vibe">100 tokens</p>
+    <!-- TOKENS -->
+    <section class="section" id="tokens">
+      <h2 class="section-title">Token bundles</h2>
+      <p class="section-sub">1 token = 1¢ of play. Bonus tokens are on the house.</p>
+      <div class="token-grid">
+        <div class="token-card">
+          <div class="token-price">$1</div>
+          <div class="token-amt">100 tokens</div>
+        </div>
+        <div class="token-card">
+          <div class="token-price">$5</div>
+          <div class="token-amt">600 tokens</div>
+          <div class="token-bonus">+100 bonus</div>
+        </div>
+        <div class="token-card popular">
+          <div class="token-flag">Most popular</div>
+          <div class="token-price">$10</div>
+          <div class="token-amt">1,300 tokens</div>
+          <div class="token-bonus">+300 bonus</div>
+        </div>
+        <div class="token-card">
+          <div class="token-price">$20</div>
+          <div class="token-amt">2,800 tokens</div>
+          <div class="token-bonus">+800 bonus</div>
+        </div>
       </div>
-      <div class="card">
-        <h3>$5.00</h3>
-        <p class="vibe">600 tokens <span style="color:#22c55e">(+100 bonus)</span></p>
-      </div>
-      <div class="card">
-        <h3>$10.00</h3>
-        <p class="vibe">1,300 tokens <span style="color:#22c55e">(+300 bonus)</span></p>
-      </div>
-      <div class="card">
-        <h3>$20.00</h3>
-        <p class="vibe">2,800 tokens <span style="color:#22c55e">(+800 bonus)</span></p>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <footer>
-    <p>&copy; 2026 Penny Pincher Trivia. Void where prohibited.</p>
-    <a href="legal/official-rules.html">Official Rules</a>
-    <a href="legal/terms.html">Terms of Service</a>
-    <a href="legal/privacy.html">Privacy Policy</a>
+    <!-- FINAL CTA -->
+    <section class="section cta-band" id="get">
+      <h2 class="cta-title">Think you've got the smarts? 🧠</h2>
+      <p class="cta-sub">Join the next 100-round showdown and pinch your way to the pot.</p>
+      <div class="cta-row center">
+        <a class="btn btn-store" href="#">🍎 App Store</a>
+        <a class="btn btn-store" href="#">▶ Google Play</a>
+        <a class="btn btn-gold" href="#">Play in browser</a>
+      </div>
+      <p class="cta-fine">Available to verified players in eligible states. 18+.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="foot-brand">Penny Pinching Trivia</div>
+    <nav>
+      <a href="legal/official-rules.html">Official Rules</a>
+      <a href="legal/terms.html">Terms of Service</a>
+      <a href="legal/privacy.html">Privacy Policy</a>
+    </nav>
+    <p class="foot-fine">© 2026 Penny Pinching Trivia. Skill-based contest. Void where prohibited. Play responsibly.</p>
   </footer>
+
+  <script src="trivia.js"></script>
 </body>
 </html>
