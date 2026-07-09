@@ -74,7 +74,7 @@ export default function LobbyScreen() {
       </View>
 
       <Text style={styles.heading}>Play Now</Text>
-      <Text style={styles.subheading}>Prizes scale with the field — top 3 to top 10.</Text>
+      <Text style={styles.subheading}>Prizes scale with the field — up to the top 10% cash.</Text>
 
       <RegionGate />
 

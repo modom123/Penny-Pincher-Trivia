@@ -3,9 +3,10 @@
 A 100-round progressive trivia game: round *N* costs *N* tokens (1 token = 1 cent) to
 enter, the prize pool grows as players unlock rounds, and the top scorers at round 100
 split 60% of the pool; the platform keeps the other 40%. The **number of paid places
-scales with the field size** (top 3 for small games → top 5 → top 10), so a strong
-finish still cashes in a big field. The split is an admin-editable schedule
-(`payout_tiers`); the default is top 3 = 50/30/20.
+scales with the field size**: small games pay top 3 (50/30/20) → top 5, and large games
+pay the **top ~10% of the field** — a top-10 podium sharing 60% of the pool on a decaying
+curve, plus a flat min-cash tail (remaining places split 40% equally, landing well above
+a typical entry). See `compute_payout_shares()` / `payout_places_for()`.
 
 > **Heads up:** this is a real-money pay-to-play contest with pooled entry fees and a
 > cash payout to winners. That's a legally operable model in much of the US (similar to
