@@ -1,5 +1,5 @@
 // Penny Pincher visual theme (from the game-design brief): midnight dark mode,
-// with Electric Emerald (money/growth) and Neon Gold (jackpot / top positions)
+// with Electric Emerald (money/growth) and Neon Gold (prize pool / top positions)
 // as the two accents. Shared across screens for a consistent look.
 export const theme = {
   bg: '#0A0E1A', // midnight navy
@@ -9,7 +9,7 @@ export const theme = {
 
   emerald: '#12E29A', // electric emerald - money, correct, primary actions
   emeraldDeep: '#0BA574',
-  gold: '#FFD23F', // neon gold - jackpot, prize pool, top-3
+  gold: '#FFD23F', // neon gold - prize pool, top-3
   crimson: '#FF4D5E', // incorrect / danger / sudden death
 
   text: '#FFFFFF',

@@ -24,7 +24,7 @@ type Game = {
 const MODE_META: Record<GameMode, { label: string; tag: string }> = {
   original_escalator: { label: 'The Escalator', tag: 'Round N costs N¢' },
   streak_saver: { label: 'Streak Saver', tag: 'Play free with a streak' },
-  milestone_booster: { label: 'Milestone Booster', tag: 'Pot boosts at 25/50/75' },
+  milestone_booster: { label: 'Milestone Booster', tag: 'Prize boosts at 25/50/75' },
 };
 
 export default function LobbyScreen() {
@@ -74,6 +74,7 @@ export default function LobbyScreen() {
       </View>
 
       <Text style={styles.heading}>Play Now</Text>
+      <Text style={styles.subheading}>Prizes scale with the field — up to the top 10% cash.</Text>
 
       <RegionGate />
 
@@ -136,7 +137,8 @@ const styles = StyleSheet.create({
   plusText: { color: theme.bg, fontSize: 22, fontWeight: '900', marginTop: -2 },
   signOut: { color: theme.textMuted, marginLeft: 14, fontSize: 13 },
 
-  heading: { color: theme.text, fontSize: 26, fontWeight: '900', marginBottom: 14 },
+  heading: { color: theme.text, fontSize: 26, fontWeight: '900', marginBottom: 4 },
+  subheading: { color: theme.textMuted, fontSize: 13, marginBottom: 14 },
   empty: { color: theme.textMuted, textAlign: 'center', marginTop: 48 },
 
   card: {

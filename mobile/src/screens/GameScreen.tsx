@@ -27,11 +27,11 @@ export default function GameScreen({ route, navigation }: Props) {
   const [streakFree, setStreakFree] = useState(false);
   const [regionBlocked, setRegionBlocked] = useState(false);
   const [prizePoolCents, setPrizePoolCents] = useState(0);
-  const [selected, setSelected] = useState<Option | null>(null);
+  const [selected, setSelected] = useState<Option | 'SKIP' | null>(null);
   const [selectedCorrect, setSelectedCorrect] = useState<boolean | null>(null);
   const [isSpectator, setIsSpectator] = useState(false);
-  // Per-round outcome history for the progress tracker: 'correct' | 'incorrect'.
-  const [history, setHistory] = useState<Record<number, 'correct' | 'incorrect'>>({});
+  // Per-round outcome history for the progress tracker.
+  const [history, setHistory] = useState<Record<number, 'correct' | 'incorrect' | 'skip'>>({});
 
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const barAnim = useRef(new Animated.Value(1)).current; // 1 -> 0 over the round
@@ -72,13 +72,17 @@ export default function GameScreen({ route, navigation }: Props) {
         setPhase('open');
         setLastResult(null);
         startCountdown(p);
-        fetchPool(); // pool climbed from last round's buy-ins
+        // Prefer the live pool broadcast in the round payload; fall back to a query.
+        if (typeof p.totalPrizePoolCents === 'number') updatePool(p.totalPrizePoolCents);
+        else fetchPool();
         scrollTrackerTo(p.roundNumber);
         detectSpectator(p);
       })
       .on('broadcast', { event: 'round:end' }, ({ payload }) => {
-        setLastResult(payload as RoundEndPayload);
+        const p = payload as RoundEndPayload;
+        setLastResult(p);
         setPhase('closed');
+        if (typeof p.totalPrizePoolCents === 'number') updatePool(p.totalPrizePoolCents);
         if (tickRef.current) clearInterval(tickRef.current);
       })
       .on('broadcast', { event: 'game:completed' }, ({ payload }) => {
@@ -125,7 +129,7 @@ export default function GameScreen({ route, navigation }: Props) {
   function updatePool(next: number) {
     setPrizePoolCents((prev) => {
       if (next > prev) {
-        // "tick upward" pulse when the jackpot grows
+        // "tick upward" pulse when the prize pool grows
         Animated.sequence([
           Animated.timing(poolPulse, { toValue: 1.12, duration: 120, useNativeDriver: true }),
           Animated.spring(poolPulse, { toValue: 1, useNativeDriver: true }),
@@ -178,13 +182,14 @@ export default function GameScreen({ route, navigation }: Props) {
     setPurchased(true);
   }
 
-  async function answer(option: Option) {
+  // choice is a letter, or 'SKIP' to pass (0 points, no penalty — avoids a forced guess).
+  async function submitChoice(choice: Option | 'SKIP') {
     if (!round || selected) return;
-    setSelected(option);
+    setSelected(choice);
     const { data, error } = await supabase.rpc('submit_answer', {
       p_game_id: gameId,
       p_round_number: round.roundNumber,
-      p_selected_option: option,
+      p_selected_option: choice,
     });
     if (error) {
       setSelected(null);
@@ -192,8 +197,12 @@ export default function GameScreen({ route, navigation }: Props) {
       return;
     }
     setPhase('answered');
-    setSelectedCorrect(Boolean(data.isCorrect));
-    setHistory((h) => ({ ...h, [round.roundNumber]: data.isCorrect ? 'correct' : 'incorrect' }));
+    const skipped = Boolean(data.skipped);
+    setSelectedCorrect(skipped ? null : Boolean(data.isCorrect));
+    setHistory((h) => ({
+      ...h,
+      [round.roundNumber]: skipped ? 'skip' : data.isCorrect ? 'correct' : 'incorrect',
+    }));
   }
 
   const tollLabel = round ? `Unlock Round ${round.roundNumber} (${money(round.costCents)})` : '';
@@ -215,6 +224,7 @@ export default function GameScreen({ route, navigation }: Props) {
             styles.dot,
             outcome === 'correct' && styles.dotCorrect,
             outcome === 'incorrect' && styles.dotIncorrect,
+            outcome === 'skip' && styles.dotSkip,
             isCurrent && styles.dotCurrent,
             !outcome && !isCurrent && n > current && styles.dotLocked,
           ];
@@ -298,11 +308,16 @@ export default function GameScreen({ route, navigation }: Props) {
       {purchased && phase !== 'closed' && (
         <View style={styles.options}>
           {(Object.entries(round.options) as [Option, string][]).map(([key, label]) => (
-            <Pressable key={key} disabled={!!selected} style={optionStyle(key)} onPress={() => answer(key)}>
+            <Pressable key={key} disabled={!!selected} style={optionStyle(key)} onPress={() => submitChoice(key)}>
               <Text style={styles.optionKey}>{key}</Text>
               <Text style={styles.optionText}>{label}</Text>
             </Pressable>
           ))}
+          {!selected && (
+            <Pressable style={styles.skipButton} onPress={() => submitChoice('SKIP')}>
+              <Text style={styles.skipText}>Skip — 0 points, no penalty</Text>
+            </Pressable>
+          )}
         </View>
       )}
 
@@ -386,6 +401,7 @@ const styles = StyleSheet.create({
   },
   dotCorrect: { backgroundColor: theme.emerald },
   dotIncorrect: { backgroundColor: theme.crimson },
+  dotSkip: { backgroundColor: theme.textMuted },
   dotCurrent: { backgroundColor: theme.gold, transform: [{ scale: 1.2 }] },
   dotLocked: { backgroundColor: 'transparent', borderWidth: 1, borderColor: theme.border },
   lockGlyph: { fontSize: 9, opacity: 0.5 },
@@ -438,4 +454,6 @@ const styles = StyleSheet.create({
   optionIncorrect: { backgroundColor: '#5A1B24', borderColor: theme.crimson },
   optionKey: { color: theme.textMuted, fontWeight: '800', fontSize: 16, width: 26 },
   optionText: { color: theme.text, fontSize: 16, flex: 1 },
+  skipButton: { alignItems: 'center', paddingVertical: 12, marginTop: 2 },
+  skipText: { color: theme.textMuted, fontSize: 14, fontWeight: '700', textDecorationLine: 'underline' },
 });

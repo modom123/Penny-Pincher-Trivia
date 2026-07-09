@@ -1,0 +1,14 @@
+# Deploy config for the marketing website (static HTML in /website).
+# Connect this repo in Netlify once; every push to the production branch then
+# redeploys automatically. No build step — it's plain HTML/CSS.
+[build]
+  publish = "website"
+  command = "echo 'static site — no build step'"
+
+# Security + caching headers for the static pages.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

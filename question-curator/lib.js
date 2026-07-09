@@ -40,6 +40,26 @@ function validShape(d) {
   );
 }
 
+// Skill-vs-chance: LLMs skew the correct answer toward one letter (often "C"),
+// which a guesser could exploit. Randomize each question's option order uniformly
+// so the correct answer lands on A/B/C/D with equal probability. Correctness is
+// tracked by a flag (robust to duplicate option text), not by matching strings.
+function shuffleOptions(q) {
+  const letters = ["A", "B", "C", "D"];
+  const items = letters.map((l) => ({ text: q.options[l], correct: l === q.correct_option }));
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+  const options = {};
+  let correct_option = "A";
+  letters.forEach((l, idx) => {
+    options[l] = items[idx].text;
+    if (items[idx].correct) correct_option = l;
+  });
+  return { ...q, options, correct_option };
+}
+
 async function generateBatch({ apiKey, model, subject, grade, count }) {
   const prompt =
 `Write ${count} multiple-choice trivia questions about "${subject.name}" (domain: ${subject.domain}).
@@ -111,6 +131,6 @@ const int = (v, d) => (Number.isFinite(parseInt(v, 10)) ? parseInt(v, 10) : d);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 module.exports = {
-  GRADES, makeDb, gradeDescriptor, contentHash, validShape, generateBatch,
+  GRADES, makeDb, gradeDescriptor, contentHash, validShape, shuffleOptions, generateBatch,
   fetchWithRetry, loadSeenHashes, parseArgs, int, sleep,
 };

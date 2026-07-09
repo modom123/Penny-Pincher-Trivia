@@ -1,8 +1,12 @@
 # Penny Pincher Trivia
 
 A 100-round progressive trivia game: round *N* costs *N* tokens (1 token = 1 cent) to
-enter, the pot grows as players unlock rounds, and the top 3 scorers at round 100 split
-60% of the pot (50/30/20); the platform keeps the other 40%.
+enter, the prize pool grows as players unlock rounds, and the top scorers at round 100
+split 60% of the pool; the platform keeps the other 40%. The **number of paid places
+scales with the field size**: small games pay top 3 (50/30/20) → top 5, and large games
+pay the **top ~10% of the field** — a top-10 podium sharing 60% of the pool on a decaying
+curve, plus a flat min-cash tail (remaining places split 40% equally, landing well above
+a typical entry). See `compute_payout_shares()` / `payout_places_for()`.
 
 > **Heads up:** this is a real-money pay-to-play contest with pooled entry fees and a
 > cash payout to winners. That's a legally operable model in much of the US (similar to
