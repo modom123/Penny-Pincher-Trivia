@@ -122,8 +122,12 @@ classification.]`
 ## 6. Prizes & Withdrawals
 
 6.1. **Prize split.** At the end of a Contest, **60% of the Prize Pool** is paid to the
-top three eligible finishers — **50% / 30% / 20%** to 1st / 2nd / 3rd — and the Operator
-retains **40%** as a platform fee. Full payout details are in the Official Rules.
+top eligible finishers and the Operator retains **40%** as a platform fee. The **number of
+paid places scales with the size of the field** (for example, top 3 in small Contests,
+increasing to top 5 and top 10 as the field grows), under a published payout schedule.
+The default small-field split is 50% / 30% / 20% to 1st / 2nd / 3rd. The applicable
+schedule for each Contest is shown before entry and set out in the Official Rules.
+`[COUNSEL: confirm the payout schedule and any state-mandated prize-disclosure language.]`
 
 6.2. **Prize credit.** Prizes are credited to your Cash Balance.
 
