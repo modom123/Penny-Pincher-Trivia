@@ -4,6 +4,10 @@
   "buildCommand": null,
   "installCommand": null,
   "outputDirectory": "website",
+  "rewrites": [
+    { "source": "/app", "destination": "/app/index.html" },
+    { "source": "/app/(.*)", "destination": "/app/index.html" }
+  ],
   "headers": [
     {
       "source": "/assets/(.*)",
