@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { getVerifiedLocationToken } from '../lib/radar';
+import { theme } from '../theme';
 
 // Soft-launch region control (Step 2 of the launch playbook). Real-money play is
 // geo-fenced to the allowlist (TX, CA at soft launch). Until the Radar.io/GeoComply
@@ -74,7 +75,7 @@ export default function RegionGate() {
       <View style={styles.pickRow}>
         {allowed.map((s) => (
           <Pressable key={s} style={styles.pick} onPress={() => setRegion(s)} disabled={busy}>
-            {busy ? <ActivityIndicator color="#04120a" /> : <Text style={styles.pickText}>I'm in {s}</Text>}
+            {busy ? <ActivityIndicator color={theme.bg} /> : <Text style={styles.pickText}>I'm in {s}</Text>}
           </Pressable>
         ))}
       </View>
@@ -84,11 +85,11 @@ export default function RegionGate() {
 
 const styles = StyleSheet.create({
   okRow: { marginBottom: 12 },
-  okText: { color: '#22c55e', fontWeight: '700', fontSize: 13 },
-  gate: { backgroundColor: '#0f1626', borderColor: '#1c2740', borderWidth: 1, borderRadius: 12, padding: 16, marginBottom: 16 },
-  gateTitle: { color: '#fff', fontWeight: '800', fontSize: 16, marginBottom: 6 },
-  gateSub: { color: '#8a93a6', fontSize: 13, marginBottom: 12 },
+  okText: { color: theme.emerald, fontWeight: '700', fontSize: 13 },
+  gate: { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1, borderRadius: 12, padding: 16, marginBottom: 16 },
+  gateTitle: { color: theme.text, fontWeight: '800', fontSize: 16, marginBottom: 6 },
+  gateSub: { color: theme.textMuted, fontSize: 13, marginBottom: 12 },
   pickRow: { flexDirection: 'row', gap: 10 },
-  pick: { flex: 1, backgroundColor: '#22c55e', borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
-  pickText: { color: '#04120a', fontWeight: '800', fontSize: 15 },
+  pick: { flex: 1, backgroundColor: theme.emerald, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  pickText: { color: theme.bg, fontWeight: '800', fontSize: 15 },
 });

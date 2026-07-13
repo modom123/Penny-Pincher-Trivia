@@ -1,5 +1,6 @@
 import React from 'react';
 import { Platform, View, StyleSheet } from 'react-native';
+import { theme } from '../theme';
 
 // Web MVP shell: on the web (Safari/Chrome soft launch) center the app at
 // phone width against a dark page so it reads as a native app on desktop too.
@@ -14,19 +15,19 @@ export default function WebFrame({ children }: { children: React.ReactNode }) {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#06080f' },
+  page: { flex: 1, backgroundColor: theme.bgDeep },
   frame: {
     flex: 1,
     width: '100%',
     maxWidth: 480,
     alignSelf: 'center',
-    backgroundColor: '#0b0f1a',
+    backgroundColor: theme.bg,
     // Subtle "device" edges on wide screens (ignored on native).
     ...Platform.select({
       web: {
         borderLeftWidth: 1,
         borderRightWidth: 1,
-        borderColor: '#141b2b',
+        borderColor: theme.border,
       },
       default: {},
     }),

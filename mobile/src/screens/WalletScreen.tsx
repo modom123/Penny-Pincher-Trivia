@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Alert, ActivityIndicator, ScrollView, TextInput, Platform, Linking } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
+import { theme } from '../theme';
 
 const isWeb = Platform.OS === 'web';
 
@@ -199,7 +200,7 @@ export default function WalletScreen() {
       <TextInput
         style={styles.input}
         placeholder="Amount to withdraw ($)"
-        placeholderTextColor="#6a6a75"
+        placeholderTextColor={theme.textMuted}
         keyboardType="decimal-pad"
         value={withdrawAmount}
         onChangeText={setWithdrawAmount}
@@ -216,7 +217,7 @@ export default function WalletScreen() {
           admin-staff only and credits non-withdrawable promo, so it can't mint cash. */}
       {!isWeb && (
         <Pressable style={styles.devButton} onPress={devCredit} disabled={busy}>
-          {busy ? <ActivityIndicator color="#0f0f14" /> : <Text style={styles.buttonText}>Dev: +$10.00 (testing only)</Text>}
+          {busy ? <ActivityIndicator color={theme.bg} /> : <Text style={styles.buttonText}>Dev: +$10.00 (testing only)</Text>}
         </Pressable>
       )}
     </ScrollView>
@@ -224,31 +225,31 @@ export default function WalletScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: '#0f0f14' },
-  balanceLabel: { color: '#9a9aa5', fontSize: 14, marginTop: 24, textAlign: 'center' },
-  balance: { color: '#fff', fontSize: 48, fontWeight: '800', textAlign: 'center', marginBottom: 16 },
-  splitRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1c1c24', borderRadius: 12, paddingVertical: 14, marginBottom: 8 },
+  container: { flex: 1, padding: 24, backgroundColor: theme.bg },
+  balanceLabel: { color: theme.textMuted, fontSize: 14, marginTop: 24, textAlign: 'center' },
+  balance: { color: theme.text, fontSize: 48, fontWeight: '800', textAlign: 'center', marginBottom: 16 },
+  splitRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.surface, borderRadius: 12, paddingVertical: 14, marginBottom: 8 },
   splitCell: { flex: 1, alignItems: 'center' },
-  splitDivider: { width: 1, alignSelf: 'stretch', backgroundColor: '#2c2c36' },
-  splitValueCash: { color: '#22c55e', fontSize: 22, fontWeight: '800' },
-  splitValueBonus: { color: '#f5c542', fontSize: 22, fontWeight: '800' },
-  splitLabel: { color: '#9a9aa5', fontSize: 12, marginTop: 4 },
-  splitNote: { color: '#6a6a75', fontSize: 12, textAlign: 'center', marginBottom: 24 },
-  withdrawableHint: { color: '#22c55e', fontSize: 13, marginBottom: 12 },
-  sectionTitle: { color: '#fff', fontSize: 18, fontWeight: '700', marginTop: 24, marginBottom: 8 },
-  button: { backgroundColor: '#1c1c24', borderRadius: 10, paddingVertical: 14, marginBottom: 12 },
+  splitDivider: { width: 1, alignSelf: 'stretch', backgroundColor: theme.border },
+  splitValueCash: { color: theme.emerald, fontSize: 22, fontWeight: '800' },
+  splitValueBonus: { color: theme.gold, fontSize: 22, fontWeight: '800' },
+  splitLabel: { color: theme.textMuted, fontSize: 12, marginTop: 4 },
+  splitNote: { color: theme.textMuted, fontSize: 12, textAlign: 'center', marginBottom: 24 },
+  withdrawableHint: { color: theme.emerald, fontSize: 13, marginBottom: 12 },
+  sectionTitle: { color: theme.text, fontSize: 18, fontWeight: '700', marginTop: 24, marginBottom: 8 },
+  button: { backgroundColor: theme.surface, borderRadius: 10, paddingVertical: 14, marginBottom: 12 },
   buttonDisabled: { opacity: 0.5 },
-  smallButton: { backgroundColor: '#22c55e', borderRadius: 8, paddingVertical: 10, marginTop: 10 },
-  devButton: { backgroundColor: '#f59e0b', borderRadius: 10, paddingVertical: 14, marginTop: 24 },
-  buttonText: { color: '#fff', textAlign: 'center', fontWeight: '700', fontSize: 16 },
+  smallButton: { backgroundColor: theme.emerald, borderRadius: 8, paddingVertical: 10, marginTop: 10 },
+  devButton: { backgroundColor: theme.gold, borderRadius: 10, paddingVertical: 14, marginTop: 24 },
+  buttonText: { color: theme.text, textAlign: 'center', fontWeight: '700', fontSize: 16 },
   input: {
-    backgroundColor: '#1c1c24',
-    color: '#fff',
+    backgroundColor: theme.surface,
+    color: theme.text,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     marginBottom: 12,
   },
-  notice: { backgroundColor: '#f59e0b22', borderRadius: 10, padding: 14, marginBottom: 12 },
-  noticeText: { color: '#f59e0b', fontSize: 14 },
+  notice: { backgroundColor: theme.gold + '22', borderRadius: 10, padding: 14, marginBottom: 12 },
+  noticeText: { color: theme.gold, fontSize: 14 },
 });

@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
   },
   optionSelected: { borderColor: theme.gold },
   optionCorrect: { backgroundColor: theme.emeraldDeep, borderColor: theme.emerald },
-  optionIncorrect: { backgroundColor: '#5A1B24', borderColor: theme.crimson },
+  optionIncorrect: { backgroundColor: theme.crimson + '33', borderColor: theme.crimson },
   optionKey: { color: theme.textMuted, fontWeight: '800', fontSize: 16, width: 26 },
   optionText: { color: theme.text, fontSize: 16, flex: 1 },
 });
