@@ -1,0 +1,36 @@
+# Render Blueprint for the Penny Pinching Trivia game-engine.
+#
+# The game-engine is the ONE piece that can't be serverless: it holds a live
+# timer across a full ~30-minute, 100-round game (plus Sudden Death Overtime),
+# so it runs as an always-on Render "worker" (a background process, no HTTP
+# port). In --watch mode it polls the games table for pending games and runs
+# each one's round loop automatically, and purges the black-box log hourly.
+#
+# Deploy: Render Dashboard -> New -> Blueprint -> pick this repo. Render reads
+# this file, creates the worker, and prompts for the one secret below.
+
+services:
+  - type: worker
+    name: penny-pincher-game-engine
+    runtime: node
+    rootDir: game-engine
+    plan: starter          # always-on (~$7/mo). Do NOT use free — workers must
+                           # never sleep, or a live game's timer dies mid-round.
+    branch: main
+    autoDeploy: true
+    buildCommand: npm install
+    startCommand: node index.js --watch
+    envVars:
+      - key: SUPABASE_URL
+        value: https://pkvdthwqvjpxhqorfpub.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false        # SECRET (sb_secret_...). Set in the Render dashboard,
+                           # never commit it. Bypasses RLS — treat like a password.
+      - key: NEXT_ROUND_DELAY_MS
+        value: "4000"
+      - key: LATE_ANSWER_GRACE_MS
+        value: "500"
+      - key: WATCH_POLL_MS
+        value: "15000"
+      - key: PURGE_INTERVAL_MS
+        value: "3600000"
