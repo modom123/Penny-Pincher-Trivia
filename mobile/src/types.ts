@@ -12,7 +12,7 @@ export type RoundStartPayload = {
 export type RoundEndPayload = {
   roundNumber: number;
   correctOption: string;
-  leaderboard: { userId: string; score: number }[];
+  leaderboard: { userId: string; username?: string; score: number }[];
   totalPrizePoolCents?: number;
   isFinalRound: boolean;
 };
@@ -35,6 +35,7 @@ export type ChatMessage = {
 
 export type RootStackParamList = {
   Auth: undefined;
+  Username: undefined;
   Lobby: undefined;
   Wallet: undefined;
   Game: { gameId: string };

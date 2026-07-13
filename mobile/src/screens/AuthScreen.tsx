@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, Alert, Image } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, Alert, Image, Platform } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme';
 
 export default function AuthScreen() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, signInWithGoogle } = useAuth();
   const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -65,6 +65,28 @@ export default function AuthScreen() {
         <Text style={styles.buttonText}>{busy ? 'Please wait...' : mode === 'signIn' ? 'Sign In' : 'Sign Up'}</Text>
       </Pressable>
 
+      {Platform.OS === 'web' && (
+        <>
+          <View style={styles.dividerRow}>
+            <View style={styles.divider} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.divider} />
+          </View>
+          <Pressable
+            style={styles.googleButton}
+            onPress={async () => {
+              try {
+                await signInWithGoogle();
+              } catch (err) {
+                Alert.alert('Google sign-in unavailable', (err as Error).message);
+              }
+            }}
+          >
+            <Text style={styles.googleText}>Continue with Google</Text>
+          </Pressable>
+        </>
+      )}
+
       <Pressable onPress={() => setMode(mode === 'signIn' ? 'signUp' : 'signIn')}>
         <Text style={styles.switchText}>
           {mode === 'signIn' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
@@ -90,4 +112,14 @@ const styles = StyleSheet.create({
   button: { backgroundColor: theme.gold, borderRadius: 999, paddingVertical: 15, marginTop: 8 },
   buttonText: { color: theme.bg, textAlign: 'center', fontWeight: '800', fontSize: 16 },
   switchText: { color: theme.textMuted, textAlign: 'center', marginTop: 16 },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 16 },
+  divider: { flex: 1, height: 1, backgroundColor: theme.border },
+  dividerText: { color: theme.textMuted, marginHorizontal: 10, fontSize: 13 },
+  googleButton: {
+    backgroundColor: '#fff',
+    borderRadius: 999,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  googleText: { color: '#1f2333', fontWeight: '800', fontSize: 16 },
 });

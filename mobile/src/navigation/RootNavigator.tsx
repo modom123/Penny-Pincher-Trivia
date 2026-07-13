@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
 import AuthScreen from '../screens/AuthScreen';
+import UsernamePickerScreen from '../screens/UsernamePickerScreen';
 import LobbyScreen from '../screens/LobbyScreen';
 import WalletScreen from '../screens/WalletScreen';
 import GameScreen from '../screens/GameScreen';
@@ -13,7 +14,7 @@ import type { RootStackParamList } from '../types';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
-  const { session, loading } = useAuth();
+  const { session, loading, needsUsername } = useAuth();
 
   if (loading) return null;
 
@@ -22,6 +23,8 @@ export default function RootNavigator() {
       <Stack.Navigator screenOptions={{ headerStyle: { backgroundColor: theme.bg }, headerTintColor: theme.text }}>
         {!session ? (
           <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />
+        ) : needsUsername ? (
+          <Stack.Screen name="Username" component={UsernamePickerScreen} options={{ headerShown: false }} />
         ) : (
           <>
             <Stack.Screen name="Lobby" component={LobbyScreen} options={{ headerShown: false }} />

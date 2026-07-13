@@ -234,7 +234,7 @@ export default function GamesPage() {
             ))}
           </select>
           <select value={newSeconds} onChange={(e) => setNewSeconds(Number(e.target.value))} style={{ maxWidth: 170 }}>
-            {[8, 10, 12, 15, 20, 30].map((s) => (
+            {[8, 10, 12, 15].map((s) => (
               <option key={s} value={s}>
                 {s}s per question
               </option>

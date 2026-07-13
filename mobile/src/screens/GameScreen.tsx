@@ -355,7 +355,7 @@ export default function GameScreen({ route, navigation }: Props) {
               <Text style={styles.finalistsTitle}>FINALISTS</Text>
               {lastResult.leaderboard.slice(0, 3).map((row, i) => (
                 <View key={row.userId} style={styles.finalistRow}>
-                  <Text style={styles.finalistName}>#{i + 1} Player {row.userId.slice(0, 4)}</Text>
+                  <Text style={styles.finalistName}>#{i + 1} {row.username ?? `Player ${row.userId.slice(0, 4)}`}</Text>
                   <Text style={styles.finalistScore}>{row.score} pts</Text>
                 </View>
               ))}
