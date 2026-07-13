@@ -29,6 +29,41 @@ header nav a:hover { color: #e5e5ea; }
 }
 .hero h1 { font-size: 48px; margin-bottom: 8px; }
 .hero p.tagline { color: #9a9aa5; font-size: 20px; margin-bottom: 32px; }
+.countdown { margin: 0 auto 32px; max-width: 480px; }
+.countdown-label {
+  color: #22c55e;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.countdown-clock { display: flex; gap: 12px; justify-content: center; }
+.countdown-unit {
+  background: #1c1c24;
+  border: 1px solid #26262f;
+  border-radius: 12px;
+  padding: 14px 6px;
+  min-width: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.countdown-num {
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.countdown-cap {
+  color: #9a9aa5;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+
 .cta-row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
 .button {
   background: #22c55e;
