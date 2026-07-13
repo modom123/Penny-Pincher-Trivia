@@ -67,7 +67,7 @@ export default function GamesPage() {
       const { data, error } = await supabase.rpc('admin_create_subject_contest', { p_subject_id: contestSubject });
       if (error) throw error;
       const g = Array.isArray(data) ? data[0] : data;
-      setMessage(`Themed contest published: game ${String(g.game_id).slice(0, 8)}… (pending — the engine will run it).`);
+      setMessage(`Themed contest drafted: game ${String(g.game_id).slice(0, 8)}… Review it below, then Approve to go live.`);
       setContestSubject('');
       await load();
     } catch (err) {
@@ -87,7 +87,38 @@ export default function GamesPage() {
     try {
       const { error } = await supabase.rpc('admin_create_game', { p_mode: newMode, p_payout_scheme: newScheme });
       if (error) throw error;
-      setMessage(`Game created (${MODE_LABELS[newMode]} · ${SCHEME_LABELS[newScheme]}).`);
+      setMessage(`Draft created (${MODE_LABELS[newMode]} · ${SCHEME_LABELS[newScheme]}). Review it below, then Approve to go live.`);
+      await load();
+    } catch (err) {
+      setMessage(`Error: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function approveGame(gameId: string) {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const { error } = await supabase.rpc('admin_approve_game', { p_game_id: gameId });
+      if (error) throw error;
+      setMessage('Game approved — it is now queued and the engine will start it shortly.');
+      await load();
+    } catch (err) {
+      setMessage(`Error: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function rejectGame(gameId: string) {
+    if (!confirm('Reject this draft game? It will be cancelled and never run.')) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const { error } = await supabase.rpc('admin_cancel_game', { p_game_id: gameId });
+      if (error) throw error;
+      setMessage('Draft rejected (cancelled).');
       await load();
     } catch (err) {
       setMessage(`Error: ${(err as Error).message}`);
@@ -173,7 +204,12 @@ export default function GamesPage() {
         <EngineStatus />
       </div>
       <div className="card">
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <h3 style={{ marginTop: 0 }}>Create a game</h3>
+        <p style={{ color: '#9a9aa5', fontSize: 13, marginTop: 0 }}>
+          Pick a game type and a payout scheme. New games are created as a <b>draft</b> — nothing
+          runs or takes money until you <b>Approve</b> it in the table below.
+        </p>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <select value={newMode} onChange={(e) => setNewMode(e.target.value as GameMode)} style={{ maxWidth: 240 }}>
             {(Object.keys(MODE_LABELS) as GameMode[]).map((m) => (
               <option key={m} value={m}>
@@ -257,6 +293,16 @@ export default function GamesPage() {
                 <td>${(g.admin_revenue_pool_cents / 100).toFixed(2)}</td>
                 <td>{new Date(g.created_at).toLocaleString()}</td>
                 <td style={{ display: 'flex', gap: 6 }}>
+                  {g.status === 'draft' && (
+                    <>
+                      <button onClick={() => approveGame(g.game_id)} disabled={busy}>
+                        ✓ Approve &amp; go live
+                      </button>
+                      <button className="secondary" onClick={() => rejectGame(g.game_id)} disabled={busy}>
+                        Reject
+                      </button>
+                    </>
+                  )}
                   {g.status === 'active' && g.current_round >= g.total_rounds && !g.in_sudden_death && (
                     <button className="secondary" onClick={() => forcePayout(g.game_id)} disabled={busy}>
                       Force payout
@@ -282,7 +328,7 @@ export default function GamesPage() {
             ))}
             {games.length === 0 && (
               <tr>
-                <td colSpan={8}>No games yet.</td>
+                <td colSpan={9}>No games yet.</td>
               </tr>
             )}
           </tbody>
