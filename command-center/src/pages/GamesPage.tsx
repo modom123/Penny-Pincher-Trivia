@@ -13,6 +13,7 @@ type Game = {
   total_prize_pool_cents: number;
   admin_revenue_pool_cents: number;
   in_sudden_death: boolean;
+  payout_scheme: PayoutScheme;
   created_at: string;
 };
 
@@ -20,6 +21,15 @@ const MODE_LABELS: Record<GameMode, string> = {
   original_escalator: 'Flat-Rate Escalator',
   streak_saver: 'Streak Saver',
   milestone_booster: 'Milestone Booster',
+};
+
+type PayoutScheme = 'standard' | 'classic_top3' | 'winner_take_most' | 'spread_the_wealth';
+
+const SCHEME_LABELS: Record<PayoutScheme, string> = {
+  standard: 'Standard (field-scaled)',
+  classic_top3: 'Classic Top 3 (50/30/20)',
+  winner_take_most: 'Winner-Take-Most (70/20/10)',
+  spread_the_wealth: 'Spread the Wealth (top ~25%)',
 };
 
 type ReadySubject = {
@@ -34,6 +44,7 @@ type ReadySubject = {
 export default function GamesPage() {
   const [games, setGames] = useState<Game[]>([]);
   const [newMode, setNewMode] = useState<GameMode>('original_escalator');
+  const [newScheme, setNewScheme] = useState<PayoutScheme>('standard');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState<string | null>(null);
@@ -74,9 +85,9 @@ export default function GamesPage() {
     setBusy(true);
     setMessage(null);
     try {
-      const { error } = await supabase.rpc('admin_create_game', { p_mode: newMode });
+      const { error } = await supabase.rpc('admin_create_game', { p_mode: newMode, p_payout_scheme: newScheme });
       if (error) throw error;
-      setMessage(`Game created (${MODE_LABELS[newMode]}).`);
+      setMessage(`Game created (${MODE_LABELS[newMode]} · ${SCHEME_LABELS[newScheme]}).`);
       await load();
     } catch (err) {
       setMessage(`Error: ${(err as Error).message}`);
@@ -170,6 +181,13 @@ export default function GamesPage() {
               </option>
             ))}
           </select>
+          <select value={newScheme} onChange={(e) => setNewScheme(e.target.value as PayoutScheme)} style={{ maxWidth: 260 }}>
+            {(Object.keys(SCHEME_LABELS) as PayoutScheme[]).map((s) => (
+              <option key={s} value={s}>
+                {SCHEME_LABELS[s]}
+              </option>
+            ))}
+          </select>
           <button onClick={createGame} disabled={busy}>
             + Create new game
           </button>
@@ -213,6 +231,7 @@ export default function GamesPage() {
             <tr>
               <th>Game ID</th>
               <th>Mode</th>
+              <th>Payout</th>
               <th>Status</th>
               <th>Round</th>
               <th>Prize Pool</th>
@@ -226,6 +245,7 @@ export default function GamesPage() {
               <tr key={g.game_id}>
                 <td>{g.game_id.slice(0, 8)}...</td>
                 <td>{MODE_LABELS[g.mode]}</td>
+                <td>{SCHEME_LABELS[g.payout_scheme] ?? g.payout_scheme ?? '—'}</td>
                 <td>
                   {g.status}
                   {g.in_sudden_death && <span className="badge open" style={{ marginLeft: 6 }}>SUDDEN DEATH</span>}

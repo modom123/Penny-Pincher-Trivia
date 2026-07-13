@@ -32,6 +32,7 @@ export default function GameScreen({ route, navigation }: Props) {
   const [isSpectator, setIsSpectator] = useState(false);
   // Per-round outcome history for the progress tracker: 'correct' | 'incorrect'.
   const [history, setHistory] = useState<Record<number, 'correct' | 'incorrect'>>({});
+  const [skipsRemaining, setSkipsRemaining] = useState<number>(3);
 
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const barAnim = useRef(new Animated.Value(1)).current; // 1 -> 0 over the round
@@ -56,8 +57,32 @@ export default function GameScreen({ route, navigation }: Props) {
       }
     })();
     fetchPool();
+    fetchSkips();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId]);
+
+  async function fetchSkips() {
+    const { data: u } = await supabase.auth.getUser();
+    if (!u.user) return;
+    const [{ data: g }, { data: s }] = await Promise.all([
+      supabase.from('games').select('max_skips').eq('game_id', gameId).single(),
+      supabase.from('player_game_stats').select('skips_used').eq('game_id', gameId).eq('user_id', u.user.id).maybeSingle(),
+    ]);
+    const max = (g?.max_skips as number) ?? 3;
+    const used = (s?.skips_used as number) ?? 0;
+    setSkipsRemaining(Math.max(max - used, 0));
+  }
+
+  async function skip() {
+    if (!round || selected || phase !== 'open') return;
+    const { data, error } = await supabase.rpc('skip_round', { p_game_id: gameId, p_round_number: round.roundNumber });
+    if (error) {
+      Alert.alert("Couldn't skip", error.message.replace(/^[A-Z_]+:\s*/, ''));
+      return;
+    }
+    setPhase('answered');
+    if (typeof data?.skipsRemaining === 'number') setSkipsRemaining(data.skipsRemaining);
+  }
 
   useEffect(() => {
     const channel = supabase.channel(`game:${gameId}`);
@@ -303,6 +328,17 @@ export default function GameScreen({ route, navigation }: Props) {
               <Text style={styles.optionText}>{label}</Text>
             </Pressable>
           ))}
+          {!round.isOvertime && phase === 'open' && !selected && (
+            <Pressable
+              style={[styles.skipButton, skipsRemaining <= 0 && styles.skipDisabled]}
+              disabled={skipsRemaining <= 0}
+              onPress={skip}
+            >
+              <Text style={styles.skipText}>
+                {skipsRemaining > 0 ? `⏭  Skip — no penalty · ${skipsRemaining} left` : 'No skips left'}
+              </Text>
+            </Pressable>
+          )}
         </View>
       )}
 
@@ -438,4 +474,15 @@ const styles = StyleSheet.create({
   optionIncorrect: { backgroundColor: theme.crimson + '33', borderColor: theme.crimson },
   optionKey: { color: theme.textMuted, fontWeight: '800', fontSize: 16, width: 26 },
   optionText: { color: theme.text, fontSize: 16, flex: 1 },
+  skipButton: {
+    marginTop: 6,
+    borderRadius: 14,
+    paddingVertical: 13,
+    borderWidth: 1.5,
+    borderColor: theme.border,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+  },
+  skipDisabled: { opacity: 0.45 },
+  skipText: { color: theme.cyan, fontWeight: '800', fontSize: 15 },
 });
