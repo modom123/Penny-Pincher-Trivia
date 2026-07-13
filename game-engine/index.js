@@ -1,4 +1,5 @@
 require('dotenv').config();
+const os = require('os');
 const { createClient } = require('@supabase/supabase-js');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -141,6 +142,23 @@ async function maybePurgeLogs() {
   else if (data > 0) console.log(`[purge] removed ${data} black-box log entries older than 48h`);
 }
 
+// Liveness beacon so the Command Center can tell the worker itself is up (not
+// just infer it from games advancing). One row per engine instance, refreshed
+// every poll. Uses the service_role client, which bypasses RLS.
+const INSTANCE_ID = `${os.hostname()}:${process.pid}`;
+
+async function recordHeartbeat(gamesInFlight) {
+  const { error } = await supabase.from('engine_heartbeats').upsert(
+    {
+      instance_id: INSTANCE_ID,
+      last_heartbeat_at: new Date().toISOString(),
+      games_in_flight: gamesInFlight,
+    },
+    { onConflict: 'instance_id' }
+  );
+  if (error) console.error('[heartbeat] failed:', error.message);
+}
+
 async function watchPendingGames() {
   console.log(`[watch] polling for pending games every ${WATCH_POLL_MS}ms`);
   const inFlight = new Set();
@@ -160,6 +178,7 @@ async function watchPendingGames() {
           .finally(() => inFlight.delete(gameId));
       }
 
+      await recordHeartbeat(inFlight.size);
       await maybePurgeLogs();
     } catch (err) {
       console.error('[watch] poll failed:', err.message);

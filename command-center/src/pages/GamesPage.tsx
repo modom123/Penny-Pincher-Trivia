@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import EngineStatus from '../components/EngineStatus';
 
 type GameMode = 'original_escalator' | 'streak_saver' | 'milestone_booster';
 
@@ -156,7 +157,10 @@ export default function GamesPage() {
 
   return (
     <div>
-      <h2>Games</h2>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <h2>Games</h2>
+        <EngineStatus />
+      </div>
       <div className="card">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <select value={newMode} onChange={(e) => setNewMode(e.target.value as GameMode)} style={{ maxWidth: 240 }}>
