@@ -8,13 +8,14 @@ export default function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function submit() {
     setBusy(true);
     try {
       if (mode === 'signUp') {
-        await signUp(email, password, username);
+        await signUp(email, password, username, referralCode);
         Alert.alert('Check your email', 'Confirm your account, then sign in.');
         setMode('signIn');
       } else {
@@ -56,6 +57,17 @@ export default function AuthScreen() {
         value={password}
         onChangeText={setPassword}
       />
+
+      {mode === 'signUp' && (
+        <TextInput
+          style={styles.input}
+          placeholder="Referral code (optional)"
+          placeholderTextColor="#6a6a75"
+          autoCapitalize="characters"
+          value={referralCode}
+          onChangeText={setReferralCode}
+        />
+      )}
 
       <Pressable style={styles.button} onPress={submit} disabled={busy}>
         <Text style={styles.buttonText}>{busy ? 'Please wait...' : mode === 'signIn' ? 'Sign In' : 'Sign Up'}</Text>

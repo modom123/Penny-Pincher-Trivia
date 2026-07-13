@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Alert, ActivityIndicator, ScrollView, TextInput, Platform, Linking } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Alert, ActivityIndicator, ScrollView, TextInput, Platform, Linking, Share } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 
@@ -25,19 +25,51 @@ type Compliance = {
   withdrawableCents: number;
 };
 
+type Referral = {
+  referralCode: string;
+  rewardPerReferralCents: number;
+  totalReferred: number;
+  rewardedCount: number;
+  pendingCount: number;
+  tokensEarnedCents: number;
+};
+
 export default function WalletScreen() {
   const [compliance, setCompliance] = useState<Compliance | null>(null);
+  const [referral, setReferral] = useState<Referral | null>(null);
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const { data, error } = await supabase.rpc('my_compliance_status');
+    const [{ data, error }, { data: ref }] = await Promise.all([
+      supabase.rpc('my_compliance_status'),
+      supabase.rpc('my_referral_status'),
+    ]);
     if (error) {
       Alert.alert('Error loading wallet', error.message);
       return;
     }
     setCompliance(data as Compliance);
+    if (ref) setReferral(ref as Referral);
   }, []);
+
+  async function shareInvite() {
+    if (!referral) return;
+    const reward = `${referral.rewardPerReferralCents} tokens`;
+    const message =
+      `Play Penny Pincher Trivia with me! Use my referral code ${referral.referralCode} when you sign up ` +
+      `— once you play your first round, I get ${reward}.`;
+    try {
+      if (isWeb && typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(message);
+        Alert.alert('Copied', 'Your invite was copied to the clipboard.');
+      } else {
+        await Share.share({ message });
+      }
+    } catch {
+      /* user dismissed the share sheet — nothing to do */
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -165,6 +197,34 @@ export default function WalletScreen() {
         </Pressable>
       ))}
 
+      {referral && (
+        <View style={styles.referralCard}>
+          <Text style={styles.referralTitle}>Refer a friend</Text>
+          <Text style={styles.referralBlurb}>
+            Earn {referral.rewardPerReferralCents} tokens when a friend signs up with your code and plays their first
+            round.
+          </Text>
+          <Pressable onPress={shareInvite} style={styles.referralCodeBox}>
+            <Text style={styles.referralCode}>{referral.referralCode ?? '—'}</Text>
+            <Text style={styles.referralCodeHint}>{isWeb ? 'Tap to copy invite' : 'Tap to share invite'}</Text>
+          </Pressable>
+          <View style={styles.referralStatsRow}>
+            <View style={styles.referralStat}>
+              <Text style={styles.referralStatValue}>{referral.rewardedCount}</Text>
+              <Text style={styles.referralStatLabel}>Joined</Text>
+            </View>
+            <View style={styles.referralStat}>
+              <Text style={styles.referralStatValue}>{referral.pendingCount}</Text>
+              <Text style={styles.referralStatLabel}>Pending</Text>
+            </View>
+            <View style={styles.referralStat}>
+              <Text style={styles.referralStatValue}>${(referral.tokensEarnedCents / 100).toFixed(2)}</Text>
+              <Text style={styles.referralStatLabel}>Earned</Text>
+            </View>
+          </View>
+        </View>
+      )}
+
       <Text style={styles.sectionTitle}>Cash out</Text>
       {c !== null && (
         <Text style={styles.withdrawableHint}>
@@ -236,6 +296,16 @@ const styles = StyleSheet.create({
   splitNote: { color: '#6a6a75', fontSize: 12, textAlign: 'center', marginBottom: 24 },
   withdrawableHint: { color: '#22c55e', fontSize: 13, marginBottom: 12 },
   sectionTitle: { color: '#fff', fontSize: 18, fontWeight: '700', marginTop: 24, marginBottom: 8 },
+  referralCard: { backgroundColor: '#12211a', borderWidth: 1, borderColor: '#22c55e55', borderRadius: 12, padding: 16, marginTop: 24 },
+  referralTitle: { color: '#22c55e', fontSize: 16, fontWeight: '800', marginBottom: 4 },
+  referralBlurb: { color: '#9a9aa5', fontSize: 13, marginBottom: 12 },
+  referralCodeBox: { backgroundColor: '#0f0f14', borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginBottom: 12 },
+  referralCode: { color: '#fff', fontSize: 26, fontWeight: '800', letterSpacing: 3 },
+  referralCodeHint: { color: '#22c55e', fontSize: 12, marginTop: 4 },
+  referralStatsRow: { flexDirection: 'row' },
+  referralStat: { flex: 1, alignItems: 'center' },
+  referralStatValue: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  referralStatLabel: { color: '#9a9aa5', fontSize: 11, marginTop: 2 },
   button: { backgroundColor: '#1c1c24', borderRadius: 10, paddingVertical: 14, marginBottom: 12 },
   buttonDisabled: { opacity: 0.5 },
   smallButton: { backgroundColor: '#22c55e', borderRadius: 8, paddingVertical: 10, marginTop: 10 },

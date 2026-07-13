@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 type AuthContextValue = {
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, username: string) => Promise<void>;
+  signUp: (email: string, password: string, username: string, referralCode?: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -31,11 +31,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       session,
       loading,
-      async signUp(email, password, username) {
+      async signUp(email, password, username, referralCode) {
+        const code = referralCode?.trim();
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { username } },
+          // referral_code (if present) is read by the handle_new_user trigger to
+          // attribute this signup to a referrer.
+          options: { data: { username, ...(code ? { referral_code: code } : {}) } },
         });
         if (error) throw error;
       },
