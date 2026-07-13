@@ -11,6 +11,7 @@ const BUNDLES = [
   { id: 'small', label: '$5.00 -> 600 Tokens' },
   { id: 'medium', label: '$10.00 -> 1300 Tokens' },
   { id: 'large', label: '$20.00 -> 2800 Tokens' },
+  { id: 'huge', label: '$50.00 -> 7000 Tokens' },
 ];
 
 type Compliance = {

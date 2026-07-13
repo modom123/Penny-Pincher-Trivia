@@ -141,7 +141,8 @@ The wallet never goes negative. When you can't afford the next round's entry cos
 
 ## Wallet: cash vs bonus tokens
 
-Token bundles grant bonus tokens (`$1 → 100`, `$5 → 600`, `$10 → 1,300`, `$20 → 2,800`).
+Token bundles grant bonus tokens (`$1 → 100`, `$5 → 600`, `$10 → 1,300`, `$20 → 2,800`,
+`$50 → 7,000`).
 1 token = 1 cent of in-game value, so the wallet is split so bonuses can't be cashed out or
 inflate real payouts:
 

@@ -20,8 +20,9 @@
     window.PPT_CONFIG = {
       appUrl:       '/app', // the web player app
       appStoreUrl:  '',  // paste the iOS App Store link once the app is published
-      playStoreUrl: ''   // paste the Google Play link once the app is published
+      playStoreUrl: '',  // paste the Google Play link once the app is published
       // (empty store links fall back to the web app so every button still works)
+      launchTargetMs: 1784189014000 // go-live target (2026-07-16T08:03:34Z); set null to hide the countdown
     };
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -95,6 +96,23 @@
       Not available in all jurisdictions · Must be of legal age · Play responsibly. See the
       <a href="legal/official-rules.html">Official Rules</a>.
     </div>
+
+    <!-- COUNTDOWN (public: clock only) -->
+    <section class="countdown-band" id="countdown" hidden>
+      <p class="cd-eyebrow">🚀 Launching soon</p>
+      <h2 class="cd-title">The first 100-round showdown goes live in</h2>
+      <div class="cd-clock">
+        <div class="cd-unit"><span class="cd-num" id="cd-dd">--</span><span class="cd-lbl">Days</span></div>
+        <div class="cd-sep">:</div>
+        <div class="cd-unit"><span class="cd-num" id="cd-hh">--</span><span class="cd-lbl">Hours</span></div>
+        <div class="cd-sep">:</div>
+        <div class="cd-unit"><span class="cd-num" id="cd-mm">--</span><span class="cd-lbl">Minutes</span></div>
+        <div class="cd-sep">:</div>
+        <div class="cd-unit"><span class="cd-num" id="cd-ss">--</span><span class="cd-lbl">Seconds</span></div>
+      </div>
+      <p class="cd-when" id="cd-when"></p>
+      <a class="btn btn-gold" data-cta="app" href="/app">Be there for round 1 →</a>
+    </section>
 
     <!-- MODES -->
     <section class="section" id="modes">
@@ -180,6 +198,12 @@
           <div class="token-amt">2,800 tokens</div>
           <div class="token-bonus">+800 bonus</div>
         </div>
+        <div class="token-card">
+          <div class="token-flag">Best value</div>
+          <div class="token-price">$50</div>
+          <div class="token-amt">7,000 tokens</div>
+          <div class="token-bonus">+2,000 bonus</div>
+        </div>
       </div>
     </section>
 
@@ -207,6 +231,7 @@
   </footer>
 
   <script src="site.js"></script>
+  <script src="countdown.js"></script>
   <script src="trivia.js"></script>
 </body>
 </html>

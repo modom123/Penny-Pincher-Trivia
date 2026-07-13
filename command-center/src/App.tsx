@@ -9,6 +9,7 @@ import FinancialsPage from './pages/FinancialsPage';
 import CompliancePage from './pages/CompliancePage';
 import SupportPage from './pages/SupportPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import LaunchPage from './pages/LaunchPage';
 
 function Gate({ children }: { children: React.ReactNode }) {
   const { session, isStaff, loading } = useAuth();
@@ -31,6 +32,7 @@ export default function App() {
               <Route path="/compliance" element={<CompliancePage />} />
               <Route path="/support" element={<SupportPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/launch" element={<LaunchPage />} />
             </Route>
           </Routes>
         </Gate>

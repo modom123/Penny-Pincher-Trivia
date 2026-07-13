@@ -171,6 +171,33 @@ img{max-width:100%}
 .demo-note.hit{color:#136c3c;font-weight:800}
 .demo-note.miss{color:#b3123a;font-weight:800}
 
+/* countdown band (public: clock only) */
+.countdown-band{position:relative;z-index:1;text-align:center;color:#fff;
+  background:
+    radial-gradient(900px 400px at 50% -40%,rgba(255,255,255,.18),transparent 60%),
+    linear-gradient(160deg,var(--blue-1),var(--blue-3));
+  padding:clamp(38px,6vw,64px) clamp(16px,5vw,40px)}
+.cd-eyebrow{text-transform:uppercase;letter-spacing:.32em;font-weight:800;
+  font-size:.82rem;color:var(--cyan-2);margin:0 0 6px}
+.cd-title{font-family:var(--font-display);font-weight:600;
+  font-size:clamp(1.4rem,3vw,2.1rem);margin:0 0 22px;color:#fff}
+.cd-clock{display:flex;align-items:stretch;justify-content:center;gap:clamp(6px,1.5vw,16px);flex-wrap:wrap}
+.cd-unit{min-width:clamp(64px,14vw,120px);
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);
+  border-radius:18px;padding:clamp(10px,1.6vw,18px) clamp(6px,1.2vw,14px);
+  display:flex;flex-direction:column;align-items:center;gap:6px}
+.cd-num{font-family:var(--font-display);font-weight:700;line-height:.9;
+  font-size:clamp(2.2rem,7vw,4.4rem);color:var(--gold);
+  font-variant-numeric:tabular-nums;text-shadow:0 0 22px rgba(255,196,46,.5)}
+.cd-lbl{text-transform:uppercase;letter-spacing:.18em;font-size:.66rem;font-weight:800;color:rgba(255,255,255,.8)}
+.cd-sep{align-self:center;font-family:var(--font-display);font-weight:700;
+  font-size:clamp(1.6rem,5vw,3rem);color:rgba(255,255,255,.35);margin-top:-.35em}
+.cd-when{color:rgba(255,255,255,.9);font-weight:700;margin:20px 0 22px;font-size:.98rem}
+.countdown-band .btn-gold{margin-top:2px}
+.countdown-band.is-live .cd-clock,.countdown-band.is-live .cd-when{display:none}
+.countdown-band.is-live .cd-title{font-size:clamp(1.8rem,5vw,3rem);color:var(--gold)}
+@media (max-width:560px){.cd-sep{display:none}.cd-unit{flex:1 1 40%}}
+
 /* disclaimer strip */
 .disclaimer{position:relative;z-index:1;background:#fff6df;color:#7a5a12;
   border-top:2px solid #ffe6a8;border-bottom:2px solid #ffe6a8;

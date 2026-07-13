@@ -9,6 +9,7 @@ const LINKS = [
   { to: '/compliance', label: 'Compliance' },
   { to: '/support', label: 'Support' },
   { to: '/analytics', label: 'Analytics' },
+  { to: '/launch', label: '🚀 Launch' },
 ];
 
 export default function Layout() {

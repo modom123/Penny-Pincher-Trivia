@@ -15,6 +15,7 @@ const BUNDLES: Record<string, { price_cents: number; tokens: number; label: stri
   small: { price_cents: 500, tokens: 600, label: "$5.00 = 600 Tokens" },
   medium: { price_cents: 1000, tokens: 1300, label: "$10.00 = 1300 Tokens" },
   large: { price_cents: 2000, tokens: 2800, label: "$20.00 = 2800 Tokens" },
+  huge: { price_cents: 5000, tokens: 7000, label: "$50.00 = 7000 Tokens" },
 };
 
 Deno.serve(async (req: Request) => {
