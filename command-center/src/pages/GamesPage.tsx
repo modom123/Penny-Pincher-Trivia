@@ -14,6 +14,7 @@ type Game = {
   admin_revenue_pool_cents: number;
   in_sudden_death: boolean;
   payout_scheme: PayoutScheme;
+  round_seconds: number;
   created_at: string;
 };
 
@@ -45,6 +46,8 @@ export default function GamesPage() {
   const [games, setGames] = useState<Game[]>([]);
   const [newMode, setNewMode] = useState<GameMode>('original_escalator');
   const [newScheme, setNewScheme] = useState<PayoutScheme>('standard');
+  const [newSeconds, setNewSeconds] = useState<number>(12);
+  const [autoApprove, setAutoApprove] = useState<boolean>(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState<string | null>(null);
@@ -85,9 +88,15 @@ export default function GamesPage() {
     setBusy(true);
     setMessage(null);
     try {
-      const { error } = await supabase.rpc('admin_create_game', { p_mode: newMode, p_payout_scheme: newScheme });
+      const { error } = await supabase.rpc('admin_create_game', {
+        p_mode: newMode, p_payout_scheme: newScheme, p_round_seconds: newSeconds, p_auto_approve: autoApprove,
+      });
       if (error) throw error;
-      setMessage(`Draft created (${MODE_LABELS[newMode]} · ${SCHEME_LABELS[newScheme]}). Review it below, then Approve to go live.`);
+      setMessage(
+        autoApprove
+          ? `Game created & queued to run automatically (${MODE_LABELS[newMode]} · ${SCHEME_LABELS[newScheme]} · ${newSeconds}s/question).`
+          : `Draft created (${MODE_LABELS[newMode]} · ${SCHEME_LABELS[newScheme]} · ${newSeconds}s/question). Review it below, then Approve to go live.`
+      );
       await load();
     } catch (err) {
       setMessage(`Error: ${(err as Error).message}`);
@@ -207,7 +216,7 @@ export default function GamesPage() {
         <h3 style={{ marginTop: 0 }}>Create a game</h3>
         <p style={{ color: '#9a9aa5', fontSize: 13, marginTop: 0 }}>
           Pick a game type and a payout scheme. New games are created as a <b>draft</b> — nothing
-          runs or takes money until you <b>Approve</b> it in the table below.
+          runs or takes money until you <b>Approve</b> it below — or tick <b>Run automatically</b> to skip review.
         </p>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <select value={newMode} onChange={(e) => setNewMode(e.target.value as GameMode)} style={{ maxWidth: 240 }}>
@@ -224,9 +233,20 @@ export default function GamesPage() {
               </option>
             ))}
           </select>
+          <select value={newSeconds} onChange={(e) => setNewSeconds(Number(e.target.value))} style={{ maxWidth: 170 }}>
+            {[8, 10, 12, 15, 20, 30].map((s) => (
+              <option key={s} value={s}>
+                {s}s per question
+              </option>
+            ))}
+          </select>
           <button onClick={createGame} disabled={busy}>
             + Create new game
           </button>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#cbd5f5' }}>
+            <input type="checkbox" checked={autoApprove} onChange={(e) => setAutoApprove(e.target.checked)} />
+            Run automatically (skip review)
+          </label>
         </div>
         {message && <p style={{ marginTop: 12 }}>{message}</p>}
       </div>
@@ -268,6 +288,7 @@ export default function GamesPage() {
               <th>Game ID</th>
               <th>Mode</th>
               <th>Payout</th>
+              <th>Timer</th>
               <th>Status</th>
               <th>Round</th>
               <th>Prize Pool</th>
@@ -282,6 +303,7 @@ export default function GamesPage() {
                 <td>{g.game_id.slice(0, 8)}...</td>
                 <td>{MODE_LABELS[g.mode]}</td>
                 <td>{SCHEME_LABELS[g.payout_scheme] ?? g.payout_scheme ?? '—'}</td>
+                <td>{g.round_seconds ? `${g.round_seconds}s` : '—'}</td>
                 <td>
                   {g.status}
                   {g.in_sudden_death && <span className="badge open" style={{ marginLeft: 6 }}>SUDDEN DEATH</span>}
@@ -328,7 +350,7 @@ export default function GamesPage() {
             ))}
             {games.length === 0 && (
               <tr>
-                <td colSpan={9}>No games yet.</td>
+                <td colSpan={10}>No games yet.</td>
               </tr>
             )}
           </tbody>
