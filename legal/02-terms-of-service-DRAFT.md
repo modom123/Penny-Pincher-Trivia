@@ -1,136 +1,252 @@
-# Penny Pincher Trivia - Terms of Service (DRAFT - not for publication)
+# Penny Pincher Trivia — Terms of Service (FINAL DRAFT for counsel review)
 
-`[COUNSEL: this entire document requires review before publication. It is a structural
-draft covering the topics a real-money skill-contest ToS typically needs, not a
-finished legal instrument.]`
+> **This is a review-ready draft, not a published legal instrument, and not legal
+> advice.** It states the App's mechanics accurately and drafts the clauses a real-money
+> skill-contest ToS needs, but a gaming/gambling attorney licensed in each launch state
+> **must** review it before publication. Items that turn on a legal judgment we cannot
+> make are marked `[COUNSEL]`. See `legal/00-READ-ME-FIRST.md`.
 
-**Last updated:** `[COUNSEL/OPS: insert date at publication]`
+**Last updated:** `[OPS: insert publication date]`
+**Operator:** `[OPS: insert legal entity name, registered address, support email]`
 
-## 1. Acceptance of Terms
+---
 
-By creating an account, depositing funds, or participating in any game on Penny Pincher
-("the App," "we," "us"), you agree to these Terms of Service ("Terms") and our Privacy
-Policy. If you do not agree, do not use the App.
+## 1. Acceptance of These Terms
 
-## 2. Eligibility
+By creating an account, adding funds, or entering any contest on Penny Pincher (the
+"App," "Service," "we," "us," "our"), you agree to these Terms of Service ("Terms") and to
+our Privacy Policy and Official Rules, each incorporated by reference. If you do not
+agree, do not use the Service.
 
-2.1. You must be at least `[COUNSEL: confirm 18 or 21 - varies by state and by whether
-this is treated as a skill contest or gambling-adjacent product]` years old.
+## 2. Definitions
 
-2.2. You must be a legal resident of, and physically located in, a jurisdiction where
-real-money skill contests of this type are permitted. Residents of the following
-jurisdictions are **not eligible** to deposit funds or receive prizes:
-`[COUNSEL: insert the approved/blocked state list from 01-state-restrictions.md once
-confirmed]`.
+- **Contest / Game** — a single 100-round trivia competition with a shared prize pool.
+- **Round** — one timed multiple-choice question within a Contest.
+- **Token** — the in-App unit of value; **1 Token = US$0.01**. Tokens exist in two
+  balances (Section 4).
+- **Entry Fee** — the Tokens required to unlock a Round.
+- **Prize Pool** — the portion of collected Entry Fees paid to top finishers.
+- **Skill Contest** — a competition whose outcome is determined predominantly by the
+  participant's knowledge and speed, not by chance.
 
-2.3. Employees, contractors, and immediate family members of Penny Pincher and its
-affiliates are not eligible to participate for real-money prizes.
+## 3. Eligibility
 
-2.4. You may only maintain one account. `[COUNSEL/OPS: define enforcement mechanism -
-device fingerprinting, KYC matching, etc.]`
+3.1. You must be at least **18** years old. `[COUNSEL: confirm 18 vs 21 per launch state;
+some states set 21 for cash-prize contests.]`
 
-## 3. The Token Wallet System
+3.2. You must be a legal resident of, and **physically located in**, a jurisdiction where
+real-money skill contests of this type are permitted. The Service uses location
+verification and only permits paid entry from **approved states** (an allow-list, not a
+block-list). If your location cannot be verified, or you are in a non-approved
+jurisdiction, you may not enter paid Contests. `[COUNSEL: provide the approved-state list
+from 01-state-restrictions.md, and confirm whether a free no-purchase-necessary Alternative
+Method of Entry (Section 16) is required in any target state.]`
 
-3.1. Each Token represents $0.01 USD of in-game / prize-pool value. Tokens are sold in
-bundles, and larger bundles include promotional bonus Tokens (you receive more Tokens
-than the dollar amount paid): $1.00 = 100 Tokens, $5.00 = 600 Tokens, $10.00 = 1,300
-Tokens, $20.00 = 2,800 Tokens. `[COUNSEL: because bonus Tokens grant in-game value above
-the amount paid, define clearly whether bonus Tokens are withdrawable as cash or
-play-only - see the arbitrage/solvency note in docs/LAUNCH-CHECKLIST.md. The
-"1 Token = $0.01" redemption value and any restriction on cashing out bonus Tokens must
-be stated explicitly and reviewed.]`
-Tokens are used solely to unlock trivia rounds within the App and have no cash value
-independent of gameplay `[COUNSEL: confirm whether characterizing tokens as having "no
-independent cash value" is accurate and helpful here, given tokens are directly
-convertible to a cash prize pool - this framing is common in similar apps but its legal
-effect should be confirmed]`.
+3.3. Employees, officers, contractors, and their immediate household members of the
+Operator and its affiliates may not participate for real-money prizes.
 
-3.2. Token purchases are processed by Stripe. See our Payment Terms
-`[COUNSEL/OPS: link once drafted]` for refund policy, which is expected to be
-**no-refund on Tokens once purchased**, consistent with typical virtual-currency terms
-- `[COUNSEL: confirm enforceability by jurisdiction, especially consumer-protection-heavy
-states].`
+3.4. **One account per person.** Multiple, duplicate, or shared accounts are prohibited
+and may be closed with forfeiture of non-cash balances. `[OPS: enforcement — KYC identity
+matching + device signals.]`
 
-3.3. Round entry costs scale with round number (Round *N* costs *N* Tokens/cents). Entry
-fees are non-refundable once a round is unlocked, win or lose.
+3.5. You must not be listed on any government sanctions/prohibited-persons list.
 
-## 4. Game Rules & Scoring
+## 4. Tokens, Deposits & the Two-Balance Wallet
 
-4.1. Each game consists of up to 100 progressively priced trivia rounds. Detailed rules,
-odds, and prize structure per game mode (Flat-Rate Escalator, Streak Saver, Milestone
-Booster) are set out in our Official Rules document, which is incorporated into these
-Terms by reference. `[COUNSEL: confirm whether a separate Official Rules doc, incorporated
-by reference, is the right structure in your target states, or whether it must be
-merged/duplicated into the ToS itself.]`
+4.1. **Token value.** Each Token represents US$0.01 of in-App value. Tokens are used only
+to enter Rounds and to receive prize credit; they are not a general-purpose stored-value
+instrument. `[COUNSEL: confirm money-transmitter / stored-value characterization and any
+required licensing or disclosures.]`
 
-4.2. Scoring is determined solely by the App's servers. The App's server clock, not your
-device's clock, is authoritative for all round timing and cutoffs.
+4.2. **Bundles and bonus Tokens.** Tokens are sold in bundles; larger bundles include
+promotional bonus Tokens: $1.00 → 100, $5.00 → 600, $10.00 → 1,300, $20.00 → 2,800.
 
-4.3. We reserve the right to void scores, disqualify a player from prize eligibility, or
-suspend an account where our systems detect anomalous input timing or other patterns
-consistent with automated play (bots) or collusion. See Section 8 (Anti-Cheat).
+4.3. **Two balances.** Your wallet has two separate balances:
+- **Cash Balance** — Tokens funded by your own payment, plus prize winnings. This balance
+  is **withdrawable** (Section 6), subject to verification.
+- **Promotional Balance** — bonus Tokens and promotional credits. Promotional Tokens
+  **can be used to enter Contests but can never be withdrawn for cash.** Entry Fees draw
+  from your Promotional Balance first, then your Cash Balance.
 
-## 5. Prizes & Payouts
+This separation is enforced by the Service: withdrawals are paid only from the Cash
+Balance. `[COUNSEL: confirm the bonus-Token disclosure meets consumer-protection
+requirements in each state; it must be presented clearly at the point of purchase.]`
 
-5.1. At the conclusion of a game, `[COUNSEL: confirm %]`% of the accumulated prize pool
-is distributed to the top-scoring eligible players (currently: 50% / 30% / 20% of the
-prize-pool share to 1st / 2nd / 3rd place respectively); the remainder is retained by
-Penny Pincher as a platform fee.
+4.4. **Deposits.** Token purchases are processed by Stripe. We do not store full card
+details.
 
-5.2. Prizes are credited to your in-App wallet and may be withdrawn to a linked payment
-account subject to identity verification (see Section 9, KYC).
+4.5. **No refunds on Tokens.** All Token purchases are final and non-refundable once
+completed, except where a refund is required by law. Entry Fees are non-refundable once a
+Round is unlocked, win or lose. `[COUNSEL: confirm enforceability in consumer-protection
+states; some require a limited cooling-off or refund of unused funds.]`
 
-5.3. Winnings may be subject to tax reporting obligations. See our Responsible Play &
-Tax Disclosure `[COUNSEL/OPS: link once drafted]`. You are solely responsible for any
-taxes owed on winnings.
+4.6. **Dormant accounts / unclaimed funds.** `[COUNSEL/OPS: insert dormancy and
+unclaimed-property (escheatment) handling — legally required in many states for balances
+representing real money.]`
 
-5.4. `[COUNSEL: confirm whether a "void where prohibited" clause plus the state
-allowlist is sufficient here, or whether specific state-mandated language is required
-(several states mandate specific contest-disclosure language).]`
+## 5. How Contests Work (Rules & Scoring)
 
-## 6. Ties & Sudden Death Overtime
+The full mechanics are in the Official Rules (incorporated by reference). In summary:
 
-`[COUNSEL: this mechanic (a live, accelerating, pay-per-question tiebreaker) should get
-specific review - a shrinking-timer, pay-to-continue tiebreaker introduces urgency/pressure
-dynamics that regulators sometimes scrutinize independently of the base game's skill
-classification.]` If two or more players are tied for a top-3 finishing position at the
-conclusion of Round 100, those tied players enter a live tiebreaker round under a
-shortened timer, at a flat per-question entry fee, until the tie is resolved.
+5.1. **Structure.** A Contest has up to 100 progressively priced Rounds. In the standard
+mode, **Round *N* costs *N* Tokens** (Round 1 = 1¢ … Round 100 = $1.00). Other modes
+(Streak Saver, Milestone Booster) vary Entry-Fee timing and are described in the Official
+Rules. `[COUNSEL: the Milestone Booster mode injects platform-funded prize bonuses; review
+whether this affects the contest's classification before enabling it for real money.]`
 
-## 7. Prohibited Conduct
+5.2. **The same questions for everyone.** Every entrant in a given Contest answers the
+identical set of Rounds. Outcomes are determined by your **knowledge and answer speed**,
+measured against the same questions faced by every competitor.
 
-You may not: use automated tools, scripts, or bots to play; exploit bugs for financial
-gain; collude with other players; attempt to reverse-engineer question content before it
-is revealed; or attempt to circumvent geolocation or identity verification.
+5.3. **Scoring** (computed only by our servers; the **server clock is authoritative**, not
+your device):
+- **Correct answer:** points equal to (round number × 10) plus a speed bonus for time
+  remaining. Later rounds and faster correct answers are worth more.
+- **Incorrect answer:** a points penalty of (round number × 10), with no speed component.
+- Your total score is floored at zero and can never go negative.
+- There is **no advantage for spending more money**; points come only from answering
+  correctly.
 
-## 8. Anti-Cheat & Account Actions
+5.4. **Ranking & tie-breaker.** Players are ranked by total score (highest first). Ties
+are broken in favor of the player who **spent the fewest Tokens** to reach that score.
 
-We use server-side timing analysis to detect implausibly fast responses. Accounts
-flagged repeatedly within a single game may be disqualified from that game's prize pool.
-We reserve the right to suspend or terminate accounts for violations of Section 7, with
-or without notice, and to withhold prize payouts pending investigation.
-`[COUNSEL: confirm what due-process/appeal mechanism, if any, is required before
-withholding a player's prize - this varies significantly by state.]`
+5.5. **Sudden Death Overtime.** If players remain exactly tied (equal score and equal
+Tokens spent) for a paid finishing position after Round 100, those tied players — and only those
+players — enter additional tiebreaker Rounds at a flat Entry Fee under a shortened timer,
+until the tie resolves. `[COUNSEL: an accelerating, pay-per-question tiebreaker warrants
+specific review for urgency/pressure dynamics independent of the base game's
+classification.]`
 
-## 9. Identity Verification (KYC)
+## 6. Prizes & Withdrawals
 
-Before your first withdrawal, and periodically thereafter, we may require you to verify
-your identity (government ID, proof of address) via our payment processor. We may delay,
-limit, or deny withdrawals pending verification, consistent with applicable anti-money-
-laundering law. `[COUNSEL: confirm specific KYC thresholds/triggers required in your
-target jurisdictions.]`
+6.1. **Prize split.** At the end of a Contest, **60% of the Prize Pool** is paid to the
+top eligible finishers and the Operator retains **40%** as a platform fee. The **number of
+paid places scales with the size of the field**: small Contests pay the top 3–5 finishers,
+and large Contests pay approximately the **top 10% of entrants**, under a published payout
+schedule. The default small-field split is 50% / 30% / 20% to 1st / 2nd / 3rd. The
+applicable schedule and number of paid places for each Contest is shown before entry and
+set out in the Official Rules.
+`[COUNSEL: confirm the payout schedule and any state-mandated prize-disclosure language.]`
 
-## 10. Dispute Resolution
+6.2. **Prize credit.** Prizes are credited to your Cash Balance.
 
-`[COUNSEL: insert arbitration clause / class-action-waiver / governing-law provisions
-per your target jurisdictions - these are highly state-and-context-specific and some
-states restrict mandatory arbitration for consumer contracts.]`
+6.3. **Withdrawals.** You may withdraw from your Cash Balance to a linked payment account
+(via Stripe Connect), subject to identity verification (Section 8) and tax compliance
+(Section 7). We may delay or decline a withdrawal pending verification, investigation of
+suspected violations, or as required by anti-money-laundering law.
 
-## 11. Changes to These Terms
+6.4. **Void where prohibited.** Contests and prizes are void where prohibited or
+restricted by law. `[COUNSEL: confirm whether any target state mandates specific
+contest-disclosure or bonding language.]`
 
-We may update these Terms from time to time. `[OPS: define notice mechanism - e.g., in-app
-notice + N days before changes affecting fees/payouts take effect.]`
+## 7. Taxes
 
-## 12. Contact
+7.1. You are solely responsible for any taxes on prizes. We track lifetime winnings and,
+as you approach the federal reporting threshold (currently US$600), we will require you to
+provide tax information (e.g., a W-9 via our processor) before further withdrawals. We may
+issue an IRS Form 1099 where required. `[COUNSEL: confirm calendar-year vs lifetime
+treatment and state reporting thresholds.]`
 
-`[OPS: insert legal entity name, address, and contact email once formed.]`
+## 8. Identity Verification (KYC) & Anti-Money-Laundering
+
+8.1. Registration and deposits require only a valid email. **Identity verification (legal
+name, date of birth confirming 18+/`[COUNSEL]`, and government ID) is required before your
+first withdrawal**, and may be required again periodically.
+
+8.2. We may delay, limit, or refuse withdrawals, and suspend accounts, to comply with KYC
+and AML obligations. `[COUNSEL: confirm KYC vendor, thresholds, and record-keeping
+obligations for your structure.]`
+
+## 9. Fair Play, Anti-Cheat & Integrity
+
+9.1. **Prohibited conduct.** You may not: use bots, scripts, automation, or assistance
+tools; collude with other entrants; exploit bugs or errors for gain; access or attempt to
+access question content before it is presented; use multiple accounts; or circumvent
+location or identity verification.
+
+9.2. **Detection.** The Service analyzes server-side answer timing. Responses faster than a
+human-plausible threshold (stricter on high-value late Rounds) are flagged. Repeated flags
+within a Contest may **disqualify you from that Contest's Prize Pool**, and we may void
+scores, suspend, or terminate accounts for violations of this Section.
+
+9.3. **Investigations & holds.** We may withhold a prize pending investigation of
+suspected cheating, collusion, or fraud. `[COUNSEL: confirm any required notice/appeal
+process before withholding a prize.]`
+
+## 10. Community Chat & Conduct
+
+10.1. Contests may include a live spectator chat. You are responsible for what you post.
+
+10.2. You may not post content that is unlawful, harassing, hateful, threatening,
+sexually explicit, that reveals others' private information, or that facilitates cheating
+or collusion. We may remove messages, mute, suspend, or ban participants, and we retain
+messages for moderation and safety. `[OPS/COUNSEL: retention period and moderation policy.]`
+
+## 11. Disputes About Gameplay
+
+We maintain a server-side record of the timing of every answer for a limited period, used
+to adjudicate gameplay disputes (e.g., "my answer didn't register"). Our server-side
+records are the authoritative record of gameplay events.
+
+## 12. Suspension & Termination
+
+We may suspend or terminate your account, with or without notice, for violation of these
+Terms or applicable law, or to protect the integrity of the Service. On termination for
+cause, `[COUNSEL: specify treatment of Cash Balance vs Promotional Balance and any
+pending prizes — cash-funded balances generally must be returnable absent proven fraud.]`
+You may close your account at any time; withdrawable Cash Balance remains subject to
+Sections 6–8.
+
+## 13. Responsible Play
+
+We support responsible play, including deposit limits and self-exclusion. `[OPS: implement
+and describe deposit/time limits, self-exclusion, and cool-off tools; several states
+require these for real-money contests. See 05-responsible-play-and-aml.md.]`
+
+## 14. Intellectual Property
+
+The App, its content, questions, trademarks, and software are owned by the Operator or its
+licensors. We grant you a limited, revocable, non-transferable license to use the App for
+personal, non-commercial play. You may not copy, scrape, or redistribute question content.
+
+## 15. Disclaimers; Limitation of Liability; Indemnification
+
+15.1. The Service is provided "as is" and "as available" without warranties of any kind to
+the maximum extent permitted by law.
+
+15.2. To the maximum extent permitted by law, the Operator is not liable for indirect,
+incidental, special, consequential, or punitive damages, and our aggregate liability is
+limited to `[COUNSEL: insert cap — commonly the greater of amounts you paid in the prior
+N months or a fixed sum.]`
+
+15.3. You agree to indemnify the Operator against claims arising from your breach of these
+Terms or misuse of the Service. `[COUNSEL: finalize scope.]`
+
+## 16. No-Purchase-Necessary / Alternative Method of Entry
+
+`[COUNSEL: several states require a free Alternative Method of Entry (AMOE) for cash-prize
+contests to avoid lottery classification. Determine whether an AMOE is required in any
+target state and, if so, insert the mechanics here; the product must then support a
+no-purchase entry path.]`
+
+## 17. Governing Law & Dispute Resolution
+
+`[COUNSEL: insert governing law, venue, arbitration agreement, and class-action waiver
+appropriate to your entity and target states — some states restrict mandatory consumer
+arbitration; do not adopt boilerplate without state-specific review.]`
+
+## 18. Changes to These Terms
+
+We may update these Terms. For material changes affecting fees, payouts, or your rights,
+we will provide notice `[OPS: in-app notice + at least N days before changes take effect.]`
+Continued use after changes take effect constitutes acceptance.
+
+## 19. Miscellaneous
+
+Severability; no waiver; entire agreement (these Terms + Privacy Policy + Official Rules);
+assignment by the Operator permitted, by you not without consent; force majeure. `[COUNSEL:
+finalize standard boilerplate.]`
+
+## 20. Contact
+
+`[OPS: legal entity name, mailing address, and support/legal contact email.]`

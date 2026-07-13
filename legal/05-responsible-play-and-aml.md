@@ -49,20 +49,30 @@ platform should independently decide:
 
 - US federal: `[COUNSEL: confirm 1099-MISC vs 1099-K thresholds and which form applies
   given the platform's role as either "payor of winnings" or a mere payment
-  intermediary - this depends on the licensing structure.]` Currently the platform has
-  no tax-form-generation workflow at all; this needs to exist before real payouts happen
-  at any meaningful volume.
-- Consider requiring a W-9 (or W-8BEN for non-US persons, if allowed at all - see
-  eligibility/geofencing question) before a player's first withdrawal above
-  `[COUNSEL: insert threshold]`.
+  intermediary - this depends on the licensing structure.]` The platform now **tracks
+  `lifetime_winnings_cents` per player** (`payout_game`) and **locks withdrawals at $550
+  until tax details are confirmed** (`reserve_withdrawal` raises `TAX_DETAILS_REQUIRED`),
+  keeping ahead of the $600 1099-MISC threshold. The remaining piece is 🔌 the actual
+  W-9 collection + 1099 filing: turn on Stripe Tax and wire its hosted W-9 flow to call
+  `confirm_tax_details` on completion.
+- A W-9 (or W-8BEN for non-US persons, if allowed at all - see eligibility/geofencing
+  question) is gated before withdrawals cross the threshold above.
 
-## What to build once counsel answers the open questions above
+## Build status of the controls this checklist calls for
 
-1. `blocked_states` / `allowed_states` config (admin-editable, not hardcoded) enforced
-   at signup and at each real-money action (deposit, round purchase, withdrawal).
-2. Self-service spend limits and self-exclusion, surfaced in the wallet UI.
-3. ID verification gate before first withdrawal, wired to whichever KYC provider
-   counsel/ops selects.
-4. Tax form collection + generation workflow tied to the payout engine.
-5. An admin view (in the "internal command center") for AML-relevant account flags -
-   see the compliance-monitoring item in the command-center scoping discussion.
+Several items below moved from "to build" to **built and DB-enforced** since this
+checklist was first written (see `docs/LAUNCH-CHECKLIST.md` for the full status map).
+The 🧑/🔌 items still need a human decision or a vendor key, not engineering.
+
+1. ✅ `blocked_states` / `allowed_states` config (admin-editable, not hardcoded),
+   enforced in `buy_round` at the real-money action. Defaults to an allowlist.
+2. 🧑 Self-service spend limits and self-exclusion in the wallet UI — **not yet built**;
+   still the clearest responsible-play gap. Scope as its own workstream.
+3. ✅ ID verification gate before first withdrawal (`reserve_withdrawal` → KYC + 18+);
+   🔌 vendor webhook (`kyc-webhook` → `apply_kyc_result`) needs a Persona/Stripe Identity
+   key.
+4. ✅ (partial) Tax-detail gate + lifetime-winnings tracking tied to the payout engine;
+   🔌 the W-9 collection + 1099 *filing* still needs Stripe Tax wired (see above).
+5. ✅ Admin view for AML-relevant account flags — the command center's Compliance page
+   surfaces anti-cheat flags, KYC review, and account suspend, with every privileged
+   action written to `admin_audit_log`.

@@ -27,7 +27,10 @@ monetization model, without a definitive answer to this question per target stat
   platform fee. `[COUNSEL: confirm these percentages don't themselves trigger a
   different regulatory classification in any target state - some jurisdictions cap the
   "house" percentage retained in a skill contest.]`
-- Prize distribution: 1st place 50% of prize pool, 2nd place 30%, 3rd place 20%.
+- Prize distribution scales with the field size: fewer than 15 eligible players pays the
+  top 3 (50% / 30% / 20% of the prize pool), 15–39 pays the top 5, and 40+ pays roughly
+  the top 10% (a decaying podium plus a flat minimum-cash tail). The applicable schedule
+  and number of paid places is shown before entry.
 
 ### Game 2: Streak Saver
 - Entry cost: same per-round pricing as above, but a correct answer makes the *next*

@@ -10,7 +10,7 @@ export const theme = {
 
   emerald: '#2BE0A6', // correct / money / primary actions (pops on blue)
   emeraldDeep: '#12A87A',
-  gold: '#FFC22E', // jackpot / prize pool / top-3 (marketing gold)
+  gold: '#FFC22E', // prize pool / top-3 (marketing gold)
   crimson: '#FF4D7D', // incorrect / danger (marketing pink-red)
 
   // Extra marketing accents, available to screens.
