@@ -17,7 +17,7 @@ export default function Layout() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <h1>Penny Pincher</h1>
+        <h1>Penny Watcher</h1>
         <nav>
           {LINKS.map((link) => (
             <NavLink key={link.to} to={link.to} className={({ isActive }) => (isActive ? 'active' : '')}>

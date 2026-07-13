@@ -29,7 +29,8 @@ export default function LoginPage() {
           alt="Penny Pinching Trivia"
           style={{ display: 'block', width: '100%', maxWidth: 240, margin: '0 auto 8px' }}
         />
-        <h2 style={{ marginTop: 0, textAlign: 'center' }}>Command Center</h2>
+        <h2 style={{ marginTop: 0, textAlign: 'center' }}>Penny Watcher</h2>
+        <p style={{ marginTop: 0, textAlign: 'center', color: '#9db6ea', fontSize: 13 }}>Staff command center</p>
         {session && isStaff === false && (
           <p style={{ color: '#ef4444' }}>Signed in, but this account has no staff role. Ask an admin to grant one.</p>
         )}
