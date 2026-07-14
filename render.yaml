@@ -32,5 +32,7 @@ services:
         value: "500"
       - key: WATCH_POLL_MS
         value: "15000"
+      - key: ENGINE_LEASE_SECONDS
+        value: "30"
       - key: PURGE_INTERVAL_MS
         value: "3600000"
