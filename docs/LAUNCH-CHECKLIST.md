@@ -65,6 +65,7 @@ human decision before real money and the public app stores are involved.
 |---|---|---|
 | Supabase DB schema live & indexed | ✅ | All migrations in `supabase/migrations/`, applied to `pkvdthwqvjpxhqorfpub` |
 | Real-time game loop configured | ✅ | Supabase Realtime + `game-engine` worker (this build uses Realtime broadcast, not a raw Socket.io cluster) |
+| Real-time game loop **deployed & running** | 🧑 | "Configured" ≠ "running": the worker is a persistent process with **no host anywhere in this repo**. `game-engine/Dockerfile` makes it deployable; you still need to point a host (Fly.io/Railway/Render/a VM) at it, or games created by the auto-scheduler just sit `pending` forever. See §5 below. |
 | Redis leaderboard | 🧑 | Not used — leaderboard is computed in Postgres/`end_round`. Add Upstash Redis only if load demands it |
 | Stripe Connect deposits live | 🔌 | `create-checkout-session` + `stripe-webhook` deployed; set `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` |
 | ID verification hooked to withdrawals | ✅ / 🔌 | Enforced in DB; vendor webhook needs a key |
@@ -113,6 +114,37 @@ see legal/02-terms-of-service-DRAFT.md §3.1.]`
 `games.min_buy_in_tokens` / `max_buy_in_tokens` are enforced in `buy_round`: a player must
 **hold ≥ MIN** tokens to join a game (`MIN_BUYIN_REQUIRED`), and cumulative token spend in a
 game may not exceed **MAX** (`MAX_BUYIN_REACHED`). Null = no limit. Set them at game creation.
+
+## 5. "Best in class games" go-live pass (this session)
+
+Ten-step pass through the whole game layer, each step verified end-to-end against
+the live database (dozens of assertions, all cleaned up afterward) before being
+applied. One real bug was caught and fixed *before* it could affect a real game
+(milestone bonus eligibility off-by-one — see migration `20260707022000`).
+
+| Item | Status | Where |
+|---|---|---|
+| Self-signup completes (email confirmation) | ✅ | You disabled "Confirm email" in Supabase Auth — verify a real signup now completes without a confirmation-link dead end |
+| Repo matches production (was badly drifted: payout-scheme engine, redesigned skip system, milestone removal) | ✅ | `20260707019000_reconcile_production_state.sql` |
+| Client Skip bug (was scored as a wrong answer, docking points) | ✅ fixed | `mobile` now calls `skip_round`, not `submit_answer` |
+| Milestone Booster re-legalized (player-funded pool bonus, not platform-funded) | ✅ | `20260707020000` + `20260707022000` (eligibility fix); website + official rules copy updated to match |
+| Auto-scheduler (games always available across all 3 modes) | ✅ built | `ensure_games_available`; **requires the engine worker to be deployed to actually run** (see §Real-time game loop above) |
+| All 3 modes proven end-to-end (pricing, streak waiver, tiers, skip limits, ties→sudden death, payout schemes) | ✅ | 44/44 assertions — see conversation for detail |
+| Anti-cheat staff visibility + eligibility reinstatement | ✅ | Command center → Compliance → "Grand-prize eligibility" |
+| Payments (deposit split, webhook idempotency, 2-phase withdrawal, KYC/age/tax/Connect gates) | ✅ verified | 21/21 assertions; **zero real Stripe invocations have ever occurred** — confirm `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`APP_PUBLIC_URL` are set to **live** keys before flipping on real money (cannot be checked from here — secret values aren't readable, nor should they be) |
+| Admin operator dashboard (engine health, live standings, config-backed scheduler) | ✅ | Command center → Games → "Operations" panel |
+| Player history/stats | ✅ | Mobile Lobby → "Your recent games" |
+| Web play deploy config | ✅ built | `mobile/netlify.toml`; **needs a second hosting site pointed at it** (separate from the marketing site) — website's "Play Now" button (`/app/`) won't resolve until that's live |
+
+### Pre-launch smoke test (run once staging/prod hosts above are live)
+
+1. Sign up a fresh account through the real app (not the admin-created demo account) — confirm it lands in the lobby with no confirmation-link dead end.
+2. Command center → Games → Operations: confirm **Active & driven > 0** and **Active & stalled = 0** once games exist. Stalled > 0 for more than a poll interval means no healthy worker is running.
+3. Buy a token bundle for real (small amount) → confirm the wallet updates within a few seconds of the Stripe redirect.
+4. Join a live game, answer a few rounds, use Skip once, verify it doesn't dock points.
+5. Force a small game to completion (`admin_force_payout`) and confirm a real payout lands in the winner's wallet.
+6. Attempt a withdrawal on an unverified account → confirm `KYC_REQUIRED` blocks it as expected.
+7. Command center → Compliance → confirm the allowed-states whitelist is set to the actual launch states, not empty.
 
 ## What is deliberately NOT automated (needs a human)
 
