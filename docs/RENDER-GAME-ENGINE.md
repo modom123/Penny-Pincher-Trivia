@@ -38,6 +38,30 @@ Render keeps the worker running and restarts it if the process exits. On restart
 `--watch` re-scans for `pending` games and resumes; in-progress games continue
 from the DB state (all timing/scoring truth lives in Postgres, not the worker).
 
+## Auto-scheduling + sign-up windows
+The worker also creates games on a cadence so the lobby is never empty. Each poll
+it calls `engine_schedule_due_game()` and `engine_promote_due_registrations()`:
+
+- **Create:** every `interval_hours` (default **72h**) a new game is created in
+  `registration` status with a `scheduled_start_at` `registration_window_hours`
+  out (default **48h**). Modes rotate through the three by default.
+- **Sign up:** during that window players call `register_for_game`, paying a fixed
+  cash `entry_fee_cents` (default **$5**) that seeds the prize pool — the pot grows
+  as people sign up. The in-game penny-pincher round buys (with the re-up window
+  through round 30) still run once the game is live.
+- **Go live / roll over:** at `scheduled_start_at`, if at least `min_players`
+  (default 2) signed up the game flips to `pending` and the engine drives it;
+  otherwise the window rolls forward (up to `max_rollovers`, then it runs anyway).
+
+All of this is tuned from the DB, no redeploy: edit `platform_config` where
+`key = 'game_scheduler'` (a JSON blob) — set `"enabled": false` to pause
+auto-creation, change `interval_hours`, `entry_fee_cents`, etc. The house rake on
+entry fees lives in `platform_config` key `entry_fee_rake_bps` (default `0` =
+full fee to the pot). Requires migration
+`20260714010000_game_registration_and_scheduler.sql`; until it's applied the
+worker logs a one-line notice and skips scheduling (games can still be created by
+hand in the Command Center).
+
 ## Env vars (already in render.yaml, tune if needed)
 | Var | Default | Meaning |
 |---|---|---|

@@ -314,6 +314,59 @@ async function maybePurgeLogs() {
   else if (data > 0) console.log(`[purge] removed ${data} black-box log entries older than 48h`);
 }
 
+// Auto-scheduler poke. Whether a game is actually due (cadence, mode rotation,
+// payout scheme, auto-approve) is decided in the DB from platform_config, so this
+// worker just nudges it every poll. Degrades to off if the RPC isn't in the DB
+// yet, so shipping it can't break a database that hasn't run the migration.
+let schedulerAvailable = true;
+
+async function maybeScheduleGame() {
+  if (!schedulerAvailable) return;
+  const { data, error } = await supabase.rpc('engine_schedule_due_game');
+  if (error) {
+    if (isMissingObject(error)) {
+      schedulerAvailable = false;
+      console.warn(
+        '[schedule] engine_schedule_due_game not found; auto-scheduling off until ' +
+          'migration 20260714010000_game_registration_and_scheduler.sql is applied'
+      );
+    } else {
+      console.error('[schedule] engine_schedule_due_game failed:', error.message);
+    }
+    return;
+  }
+  if (data?.created) {
+    console.log(
+      `[schedule] created ${data.mode} game ${data.gameId} ` +
+        `(registration open until ${data.scheduledStartAt}, entry ${data.entryFeeCents}c)`
+    );
+  } else if (data?.reason === 'create_failed') {
+    console.error(`[schedule] game creation failed (${data.mode}): ${data.error}`);
+  }
+}
+
+// At each poll, start any registration game whose sign-up window has closed (or
+// roll it over if it's short of its minimum). Shares the scheduler's migration,
+// so it rides the same availability flag.
+async function maybePromoteRegistrations() {
+  if (!schedulerAvailable) return;
+  const { data, error } = await supabase.rpc('engine_promote_due_registrations');
+  if (error) {
+    if (isMissingObject(error)) schedulerAvailable = false;
+    else console.error('[promote] engine_promote_due_registrations failed:', error.message);
+    return;
+  }
+  for (const a of data?.actions ?? []) {
+    if (a.action === 'started') {
+      console.log(`[promote] game ${a.gameId} reached start time with ${a.players} player(s); going live`);
+    } else if (a.action === 'rolled_over') {
+      console.log(
+        `[promote] game ${a.gameId} had ${a.players} player(s) (< min); rolled window over (#${a.rolloverCount})`
+      );
+    }
+  }
+}
+
 // Liveness beacon so the Command Center can tell the worker itself is up (not
 // just infer it from games advancing). One row per engine instance, refreshed
 // every poll. Uses the service_role client, which bypasses RLS.
@@ -351,6 +404,9 @@ async function watchPendingGames() {
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
+      await maybeScheduleGame();
+      await maybePromoteRegistrations();
+
       const runnable = await listRunnableGames();
 
       for (const { game_id: gameId } of runnable) {
