@@ -30,6 +30,7 @@ export default function GameScreen({ route, navigation }: Props) {
   const [selected, setSelected] = useState<Option | 'SKIP' | null>(null);
   const [selectedCorrect, setSelectedCorrect] = useState<boolean | null>(null);
   const [isSpectator, setIsSpectator] = useState(false);
+  const [milestoneBanner, setMilestoneBanner] = useState<RoundStartPayload['milestoneBonus'] | null>(null);
   // Per-round outcome history for the progress tracker.
   const [history, setHistory] = useState<Record<number, 'correct' | 'incorrect' | 'skip'>>({});
 
@@ -77,6 +78,7 @@ export default function GameScreen({ route, navigation }: Props) {
         else fetchPool();
         scrollTrackerTo(p.roundNumber);
         detectSpectator(p);
+        setMilestoneBanner(p.milestoneBonus?.applied ? p.milestoneBonus : null);
       })
       .on('broadcast', { event: 'round:end' }, ({ payload }) => {
         const p = payload as RoundEndPayload;
@@ -282,6 +284,16 @@ export default function GameScreen({ route, navigation }: Props) {
       {renderTracker()}
 
       {round.isOvertime && <Text style={styles.overtimeBanner}>⚡ SUDDEN DEATH OVERTIME</Text>}
+      {milestoneBanner?.applied && (
+        <View style={styles.milestoneBanner}>
+          <Text style={styles.milestoneBannerTitle}>🏆 MILESTONE BONUS — {money(milestoneBanner.totalBonusCents ?? 0)}</Text>
+          <Text style={styles.milestoneBannerBody}>
+            Paid instantly, straight from the prize pool, to{' '}
+            {(milestoneBanner.recipients ?? []).map((r) => r.username ?? 'a player').join(' & ')}
+            {' '}for leading at Round {milestoneBanner.roundNumber}.
+          </Text>
+        </View>
+      )}
       <Text style={styles.roundLabel}>
         Round {round.roundNumber}
         {!round.isOvertime && ' / 100'} · {secondsLeft}s
@@ -425,6 +437,16 @@ const styles = StyleSheet.create({
   lockGlyph: { fontSize: 9, opacity: 0.5 },
 
   overtimeBanner: { color: theme.crimson, fontSize: 14, fontWeight: '800', letterSpacing: 1, marginBottom: 4 },
+  milestoneBanner: {
+    backgroundColor: theme.gold + '1A',
+    borderWidth: 1,
+    borderColor: theme.gold,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+  },
+  milestoneBannerTitle: { color: theme.gold, fontWeight: '900', fontSize: 14, marginBottom: 2 },
+  milestoneBannerBody: { color: theme.text, fontSize: 12.5 },
   roundLabel: { color: theme.textMuted, fontSize: 14, marginBottom: 10 },
 
   card: {

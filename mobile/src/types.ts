@@ -1,3 +1,12 @@
+export type MilestoneBonus = {
+  applied: boolean;
+  reason?: string;
+  roundNumber?: number;
+  totalBonusCents?: number;
+  remainingPoolCents?: number;
+  recipients?: { userId: string; username?: string; amountCents: number }[];
+};
+
 export type RoundStartPayload = {
   roundNumber: number;
   questionText: string;
@@ -7,6 +16,9 @@ export type RoundStartPayload = {
   serverStartTimeMs: number;
   totalPrizePoolCents?: number;
   isOvertime?: boolean;
+  // Milestone Booster only: a pool-funded bonus paid to the round 25/50/75
+  // leader(s), carved from money already in the pool (never platform-funded).
+  milestoneBonus?: MilestoneBonus;
 };
 
 export type RoundEndPayload = {
