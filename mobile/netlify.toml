@@ -1,0 +1,26 @@
+# Deploy config for the playable web app (Expo web export of mobile/).
+#
+# This is a SEPARATE Netlify site from the one that deploys the marketing
+# page (see the root netlify.toml, which publishes /website). Create a second
+# Netlify site pointed at this same repo with its "Base directory" set to
+# "mobile" so it picks up this file instead of the root one.
+#
+# The Supabase URL/anon key are baked into app.json's expo.extra block
+# (public, non-secret values by design - see mobile/src/lib/supabase.ts), so
+# no build-time environment variables are required.
+[build]
+  command = "npx expo export --platform web"
+  publish = "dist"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Single-page app: let React Navigation's client-side router handle all paths.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

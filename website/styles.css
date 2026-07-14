@@ -75,6 +75,7 @@ header nav a:hover { color: #e5e5ea; }
   display: inline-block;
 }
 .button.secondary { background: #1c1c24; color: #e5e5ea; }
+.button.disabled { opacity: 0.45; pointer-events: none; cursor: default; }
 
 .section { max-width: 960px; margin: 0 auto; padding: 48px 24px; }
 .section h2 { font-size: 28px; margin-bottom: 24px; text-align: center; }

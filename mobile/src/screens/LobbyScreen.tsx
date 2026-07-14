@@ -27,16 +27,37 @@ const MODE_META: Record<GameMode, { label: string; tag: string }> = {
   milestone_booster: { label: 'Milestone Booster', tag: 'Pool pays the leader at 25/50/75' },
 };
 
+type HistoryGame = {
+  game_id: string;
+  mode: GameMode;
+  status: string;
+  payout_cents: number;
+  milestone_bonus_cents: number;
+  spent_cents: number;
+  total_score: number;
+  current_round_reached: number;
+  is_eliminated: boolean;
+};
+
+type PlayerStats = {
+  gamesPlayed: number;
+  gamesWon: number;
+  lifetimeWinningsCents: number;
+  lifetimeSpentCents: number;
+};
+
 export default function LobbyScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { signOut } = useAuth();
   const [games, setGames] = useState<Game[]>([]);
   const [balanceCents, setBalanceCents] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [history, setHistory] = useState<HistoryGame[]>([]);
+  const [stats, setStats] = useState<PlayerStats | null>(null);
 
   const load = useCallback(async () => {
     setRefreshing(true);
-    const [{ data: gameData }, { data: comp }] = await Promise.all([
+    const [{ data: gameData }, { data: comp }, { data: hist }, { data: playerStats }] = await Promise.all([
       supabase
         .from('games')
         .select(
@@ -45,9 +66,13 @@ export default function LobbyScreen() {
         .in('status', ['pending', 'active'])
         .order('created_at', { ascending: false }),
       supabase.rpc('my_compliance_status'),
+      supabase.rpc('my_game_history', { p_limit: 10 }),
+      supabase.rpc('my_player_stats'),
     ]);
     if (gameData) setGames(gameData as unknown as Game[]);
     if (comp && typeof comp.walletBalanceCents === 'number') setBalanceCents(comp.walletBalanceCents);
+    if (hist) setHistory(hist as HistoryGame[]);
+    if (playerStats) setStats(playerStats as PlayerStats);
     setRefreshing(false);
   }, []);
 
@@ -110,6 +135,53 @@ export default function LobbyScreen() {
             </Pressable>
           );
         }}
+        ListFooterComponent={
+          <View style={styles.historySection}>
+            {stats && stats.gamesPlayed > 0 && (
+              <View style={styles.statsRow}>
+                <View style={styles.statCell}>
+                  <Text style={styles.statValue}>{stats.gamesPlayed}</Text>
+                  <Text style={styles.statLabel}>Played</Text>
+                </View>
+                <View style={styles.statCell}>
+                  <Text style={styles.statValue}>{stats.gamesWon}</Text>
+                  <Text style={styles.statLabel}>Won</Text>
+                </View>
+                <View style={styles.statCell}>
+                  <Text style={[styles.statValue, { color: theme.gold }]}>{money(stats.lifetimeWinningsCents)}</Text>
+                  <Text style={styles.statLabel}>Lifetime winnings</Text>
+                </View>
+              </View>
+            )}
+            {history.length > 0 && (
+              <>
+                <Text style={styles.historyHeading}>Your recent games</Text>
+                {history.map((h) => {
+                  const meta = MODE_META[h.mode];
+                  const netCents = h.payout_cents + h.milestone_bonus_cents - h.spent_cents;
+                  const inProgress = h.status !== 'completed';
+                  return (
+                    <Pressable
+                      key={h.game_id}
+                      style={styles.historyCard}
+                      onPress={() => !inProgress || navigation.navigate('Game', { gameId: h.game_id })}
+                    >
+                      <View>
+                        <Text style={styles.historyMode}>{meta.label}</Text>
+                        <Text style={styles.historyStatus}>
+                          {inProgress ? `In progress — round ${h.current_round_reached}` : h.is_eliminated ? 'Eliminated' : 'Finished'}
+                        </Text>
+                      </View>
+                      <Text style={[styles.historyNet, netCents >= 0 ? styles.historyNetPositive : styles.historyNetNegative]}>
+                        {inProgress ? '—' : `${netCents >= 0 ? '+' : ''}${money(netCents)}`}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </>
+            )}
+          </View>
+        }
       />
     </View>
   );
@@ -169,4 +241,36 @@ const styles = StyleSheet.create({
   roundBox: { backgroundColor: theme.surfaceAlt, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
   roundText: { color: theme.text, fontWeight: '700', fontSize: 13 },
   suddenDeath: { color: theme.crimson, fontWeight: '800', fontSize: 12, marginTop: 12, letterSpacing: 1 },
+
+  historySection: { marginTop: 8 },
+  statsRow: {
+    flexDirection: 'row',
+    backgroundColor: theme.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.border,
+    paddingVertical: 14,
+    marginBottom: 18,
+  },
+  statCell: { flex: 1, alignItems: 'center' },
+  statValue: { color: theme.text, fontSize: 18, fontWeight: '900' },
+  statLabel: { color: theme.textMuted, fontSize: 11, marginTop: 2 },
+  historyHeading: { color: theme.text, fontSize: 16, fontWeight: '800', marginBottom: 10 },
+  historyCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: theme.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.border,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+  },
+  historyMode: { color: theme.text, fontSize: 14, fontWeight: '700' },
+  historyStatus: { color: theme.textMuted, fontSize: 12, marginTop: 2 },
+  historyNet: { fontSize: 15, fontWeight: '800' },
+  historyNetPositive: { color: theme.emerald },
+  historyNetNegative: { color: theme.crimson },
 });
