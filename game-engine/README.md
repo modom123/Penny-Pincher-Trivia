@@ -59,6 +59,37 @@ than one copy:
 Run multiple instances for high availability: they share the work (each game goes
 to whichever worker claims it first) and cover for each other on failure.
 
+## Deploying
+
+This is a **persistent worker, not an HTTP service** — it must run continuously
+somewhere, or games never advance and the lobby never fills. There is no serverless
+option for this piece (see the top of this file). A `Dockerfile` is included;
+point any long-running-process host at it (Fly.io, Railway, Render Background
+Worker, ECS/Fargate, a plain VM under `pm2`/`systemd`, ...):
+
+```bash
+docker build -t penny-pincher-game-engine .
+docker run -e SUPABASE_URL=... -e SUPABASE_SERVICE_ROLE_KEY=... penny-pincher-game-engine
+```
+
+Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (and any overrides from the
+Configuration table below) as platform secrets — never bake the service-role key
+into the image. **Nothing in this repo runs this worker for you; without a
+deployment, `games` will be created by the auto-scheduler but never actually play
+out.**
+
+## Auto-scheduler
+
+Every poll tick, Game Director mode also calls `ensure_games_available`, which
+tops up the number of joinable (`pending`/`active`) games to `MIN_JOINABLE_GAMES`,
+rotating across all 3 modes (`original_escalator` / `streak_saver` /
+`milestone_booster`) so the lobby is never empty and every mode advertised on the
+website is actually joinable — no admin has to click "Create new game" for the
+lights to stay on. `ensure_games_available` takes a Postgres advisory lock around
+its count-then-create, so running multiple Director instances doesn't cause
+over-creation. Set `AUTO_SCHEDULE=false` to disable and fall back to purely
+admin-created games (via the command-center).
+
 ## Configuration
 
 All via environment variables (see `.env.example`):
@@ -73,6 +104,8 @@ All via environment variables (see `.env.example`):
 | `ENGINE_WORKER_ID` | `host:pid:rand` | Override the worker identity (e.g. a stable pod name) |
 | `WATCH_POLL_MS` | `15000` | How often Game Director mode polls for runnable games |
 | `PURGE_INTERVAL_MS` | `3600000` | How often to purge black-box logs older than 48h |
+| `MIN_JOINABLE_GAMES` | `3` | Minimum pending/active games to keep available, rotated across modes |
+| `AUTO_SCHEDULE` | `true` | Set to `false` to disable auto-created games |
 
 ## Notes
 

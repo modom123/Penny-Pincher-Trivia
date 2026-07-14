@@ -257,6 +257,30 @@ async function maybePurgeLogs() {
   else if (data > 0) console.log(`[purge] removed ${data} black-box log entries older than 48h`);
 }
 
+// Auto-scheduler: keep at least MIN_JOINABLE_GAMES games in pending/active state
+// at all times, rotating across all 3 modes, so the lobby is never empty and
+// every mode advertised on the website is actually joinable. Runs every poll
+// tick; ensure_games_available's advisory lock makes this race-free even with
+// multiple Game Director instances polling concurrently.
+const MIN_JOINABLE_GAMES = parseInt(process.env.MIN_JOINABLE_GAMES || '3', 10);
+const AUTO_SCHEDULE = process.env.AUTO_SCHEDULE !== 'false';
+
+async function maybeScheduleGames() {
+  if (!AUTO_SCHEDULE) return;
+  const { data, error } = await supabase.rpc('ensure_games_available', { p_min_joinable: MIN_JOINABLE_GAMES });
+  if (error) {
+    console.error('[schedule] ensure_games_available failed:', error.message);
+    return;
+  }
+  const created = data?.created ?? [];
+  if (created.length > 0) {
+    console.log(
+      `[schedule] created ${created.length} game(s) to reach ${MIN_JOINABLE_GAMES} joinable: ` +
+        created.map((g) => `${g.mode}(${g.gameId.slice(0, 8)})`).join(', ')
+    );
+  }
+}
+
 async function watchPendingGames() {
   console.log(`[watch] worker ${WORKER_ID} polling for runnable games every ${WATCH_POLL_MS}ms`);
   const inFlight = new Set();
@@ -264,6 +288,8 @@ async function watchPendingGames() {
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
+      await maybeScheduleGames();
+
       const { data: runnable, error } = await supabase.rpc('engine_runnable_games');
       if (error) throw error;
 
