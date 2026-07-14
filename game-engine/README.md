@@ -81,14 +81,18 @@ out.**
 ## Auto-scheduler
 
 Every poll tick, Game Director mode also calls `ensure_games_available`, which
-tops up the number of joinable (`pending`/`active`) games to `MIN_JOINABLE_GAMES`,
-rotating across all 3 modes (`original_escalator` / `streak_saver` /
+tops up the number of joinable (`pending`/`active`) games to a configured
+minimum, rotating across all 3 modes (`original_escalator` / `streak_saver` /
 `milestone_booster`) so the lobby is never empty and every mode advertised on the
 website is actually joinable — no admin has to click "Create new game" for the
 lights to stay on. `ensure_games_available` takes a Postgres advisory lock around
 its count-then-create, so running multiple Director instances doesn't cause
-over-creation. Set `AUTO_SCHEDULE=false` to disable and fall back to purely
-admin-created games (via the command-center).
+over-creation.
+
+The minimum and the on/off switch are **live-tunable from the command-center**
+(Operations panel) without redeploying this worker — each tick reads
+`platform_config` via `engine_scheduler_config`, falling back to the
+`MIN_JOINABLE_GAMES` / `AUTO_SCHEDULE` env vars only if no config row exists yet.
 
 ## Configuration
 

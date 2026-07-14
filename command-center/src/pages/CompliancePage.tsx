@@ -2,7 +2,23 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 type CheatFlag = { id: string; user_id: string; game_id: string | null; round_number: number | null; reason: string; created_at: string };
+type FlaggedPlayer = {
+  user_id: string;
+  username: string;
+  game_id: string;
+  mode: string;
+  flag_count: number;
+  flags: { roundNumber: number; reason: string; createdAt: string }[];
+  is_eligible_for_grand_prize: boolean | null;
+  is_eliminated: boolean | null;
+};
 type Profile = { user_id: string; username: string; is_suspended: boolean; wallet_balance_cents: number };
+const MODE_LABELS_FALLBACK: Record<string, string> = {
+  original_escalator: 'Flat-Rate Escalator',
+  streak_saver: 'Streak Saver',
+  milestone_booster: 'Milestone Booster',
+};
+
 type KycRow = {
   user_id: string;
   username: string;
@@ -22,6 +38,12 @@ export default function CompliancePage() {
   const [busy, setBusy] = useState(false);
   const [kycFilter, setKycFilter] = useState('pending');
   const [kycRows, setKycRows] = useState<KycRow[]>([]);
+  const [flaggedPlayers, setFlaggedPlayers] = useState<FlaggedPlayer[]>([]);
+
+  const loadFlaggedPlayers = useCallback(async () => {
+    const { data } = await supabase.rpc('admin_list_cheat_flags', { p_game_id: null, p_limit: 100 });
+    if (data) setFlaggedPlayers(data as FlaggedPlayer[]);
+  }, []);
 
   const load = useCallback(async () => {
     const { data: flagData } = await supabase.from('cheat_flags').select('*').order('created_at', { ascending: false }).limit(100);
@@ -58,11 +80,29 @@ export default function CompliancePage() {
 
   useEffect(() => {
     load();
-  }, [load]);
+    loadFlaggedPlayers();
+  }, [load, loadFlaggedPlayers]);
 
   useEffect(() => {
     loadKyc();
   }, [loadKyc]);
+
+  async function reinstate(userId: string, gameId: string) {
+    const reason = prompt('Reason for reinstating grand-prize eligibility? (reviewed and confirmed not cheating)') ?? '';
+    if (!reason) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const { error } = await supabase.rpc('admin_reinstate_eligibility', { p_user_id: userId, p_game_id: gameId, p_reason: reason });
+      if (error) throw error;
+      setMessage('Grand-prize eligibility reinstated for this game.');
+      await loadFlaggedPlayers();
+    } catch (err) {
+      setMessage(`Error: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function toggleSuspend(userId: string, suspend: boolean) {
     setBusy(true);
@@ -219,6 +259,57 @@ export default function CompliancePage() {
             {kycRows.length === 0 && (
               <tr>
                 <td colSpan={7}>No players match this filter.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>Grand-prize eligibility (per game)</h3>
+        <p style={{ color: '#9a9aa5', fontSize: 13 }}>
+          submit_answer auto-disqualifies a player from a game's grand prize after 3 velocity flags (or 2 on
+          high-value rounds ≥80). That heuristic can false-positive on a genuinely fast player. Review the flag
+          history below and reinstate if it wasn't cheating - this restores eligibility for that game only; the
+          flag history itself is never erased.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Game</th>
+              <th>Flags</th>
+              <th>Standing</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {flaggedPlayers.map((p) => (
+              <tr key={`${p.user_id}-${p.game_id}`}>
+                <td>{p.username}</td>
+                <td>
+                  {MODE_LABELS_FALLBACK[p.mode] ?? p.mode} ({p.game_id.slice(0, 8)}...)
+                </td>
+                <td title={p.flags.map((f) => `Round ${f.roundNumber}: ${f.reason}`).join('\n')}>{p.flag_count}</td>
+                <td>
+                  {p.is_eliminated && <span className="badge open">eliminated</span>}
+                  {!p.is_eliminated && p.is_eligible_for_grand_prize === false && (
+                    <span className="badge open">disqualified from prize</span>
+                  )}
+                  {!p.is_eliminated && p.is_eligible_for_grand_prize !== false && <span className="badge resolved">eligible</span>}
+                </td>
+                <td>
+                  {p.is_eligible_for_grand_prize === false && !p.is_eliminated && (
+                    <button className="secondary" onClick={() => reinstate(p.user_id, p.game_id)} disabled={busy}>
+                      Reinstate eligibility
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {flaggedPlayers.length === 0 && (
+              <tr>
+                <td colSpan={5}>No flagged players.</td>
               </tr>
             )}
           </tbody>

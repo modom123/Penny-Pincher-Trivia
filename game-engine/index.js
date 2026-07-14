@@ -262,12 +262,27 @@ async function maybePurgeLogs() {
 // every mode advertised on the website is actually joinable. Runs every poll
 // tick; ensure_games_available's advisory lock makes this race-free even with
 // multiple Game Director instances polling concurrently.
-const MIN_JOINABLE_GAMES = parseInt(process.env.MIN_JOINABLE_GAMES || '3', 10);
-const AUTO_SCHEDULE = process.env.AUTO_SCHEDULE !== 'false';
+//
+// The env vars below are only the FALLBACK default. Live values are read from
+// platform_config (via engine_scheduler_config) each tick, so ops can tune game
+// supply or pause auto-scheduling from the command-center during launch week
+// without redeploying this worker.
+const MIN_JOINABLE_GAMES_DEFAULT = parseInt(process.env.MIN_JOINABLE_GAMES || '3', 10);
+const AUTO_SCHEDULE_DEFAULT = process.env.AUTO_SCHEDULE !== 'false';
 
 async function maybeScheduleGames() {
-  if (!AUTO_SCHEDULE) return;
-  const { data, error } = await supabase.rpc('ensure_games_available', { p_min_joinable: MIN_JOINABLE_GAMES });
+  const { data: config, error: configError } = await supabase.rpc('engine_scheduler_config', {
+    p_default_min_joinable: MIN_JOINABLE_GAMES_DEFAULT,
+    p_default_auto_schedule: AUTO_SCHEDULE_DEFAULT,
+  });
+  if (configError) {
+    console.error('[schedule] engine_scheduler_config failed, using env-var defaults:', configError.message);
+  }
+  const minJoinable = config?.minJoinableGames ?? MIN_JOINABLE_GAMES_DEFAULT;
+  const autoScheduleEnabled = config?.autoScheduleEnabled ?? AUTO_SCHEDULE_DEFAULT;
+  if (!autoScheduleEnabled) return;
+
+  const { data, error } = await supabase.rpc('ensure_games_available', { p_min_joinable: minJoinable });
   if (error) {
     console.error('[schedule] ensure_games_available failed:', error.message);
     return;
@@ -275,7 +290,7 @@ async function maybeScheduleGames() {
   const created = data?.created ?? [];
   if (created.length > 0) {
     console.log(
-      `[schedule] created ${created.length} game(s) to reach ${MIN_JOINABLE_GAMES} joinable: ` +
+      `[schedule] created ${created.length} game(s) to reach ${minJoinable} joinable: ` +
         created.map((g) => `${g.mode}(${g.gameId.slice(0, 8)})`).join(', ')
     );
   }
