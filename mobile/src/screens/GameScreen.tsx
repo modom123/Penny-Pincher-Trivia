@@ -182,10 +182,29 @@ export default function GameScreen({ route, navigation }: Props) {
     setPurchased(true);
   }
 
-  // choice is a letter, or 'SKIP' to pass (0 points, no penalty — avoids a forced guess).
+  // choice is a letter, or 'SKIP' to pass (0 points, no penalty — avoids a forced
+  // guess). Skips go through the dedicated skip_round RPC; sending 'SKIP' to
+  // submit_answer would score as a wrong answer and dock points.
   async function submitChoice(choice: Option | 'SKIP') {
     if (!round || selected) return;
     setSelected(choice);
+
+    if (choice === 'SKIP') {
+      const { error } = await supabase.rpc('skip_round', {
+        p_game_id: gameId,
+        p_round_number: round.roundNumber,
+      });
+      if (error) {
+        setSelected(null);
+        Alert.alert("Couldn't skip", error.message.replace(/^[A-Z_]+:\s*/, ''));
+        return;
+      }
+      setPhase('answered');
+      setSelectedCorrect(null);
+      setHistory((h) => ({ ...h, [round.roundNumber]: 'skip' }));
+      return;
+    }
+
     const { data, error } = await supabase.rpc('submit_answer', {
       p_game_id: gameId,
       p_round_number: round.roundNumber,
@@ -197,11 +216,10 @@ export default function GameScreen({ route, navigation }: Props) {
       return;
     }
     setPhase('answered');
-    const skipped = Boolean(data.skipped);
-    setSelectedCorrect(skipped ? null : Boolean(data.isCorrect));
+    setSelectedCorrect(Boolean(data.isCorrect));
     setHistory((h) => ({
       ...h,
-      [round.roundNumber]: skipped ? 'skip' : data.isCorrect ? 'correct' : 'incorrect',
+      [round.roundNumber]: data.isCorrect ? 'correct' : 'incorrect',
     }));
   }
 
