@@ -1,6 +1,7 @@
 export type RoundStartPayload = {
   roundNumber: number;
   questionText: string;
+  imageUrl?: string | null;
   options: Record<'A' | 'B' | 'C' | 'D', string>;
   costCents: number;
   timeLimitSeconds: number;

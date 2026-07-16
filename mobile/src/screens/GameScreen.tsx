@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Alert, Animated, ScrollView } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Alert, Animated, ScrollView, Image } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
@@ -286,6 +286,9 @@ export default function GameScreen({ route, navigation }: Props) {
 
       {/* Question card + shrinking countdown bar */}
       <View style={styles.card}>
+        {round.imageUrl ? (
+          <Image source={{ uri: round.imageUrl }} style={styles.questionImage} resizeMode="contain" />
+        ) : null}
         <Text style={styles.question}>{round.questionText}</Text>
         <View style={styles.barTrack}>
           <Animated.View
@@ -436,6 +439,13 @@ const styles = StyleSheet.create({
     borderColor: theme.border,
     padding: 20,
     marginBottom: 18,
+  },
+  questionImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    marginBottom: 16,
+    backgroundColor: theme.surfaceAlt,
   },
   question: { color: theme.text, fontSize: 21, fontWeight: '700', marginBottom: 18, lineHeight: 28 },
   barTrack: { height: 8, borderRadius: 4, backgroundColor: theme.surfaceAlt, overflow: 'hidden' },

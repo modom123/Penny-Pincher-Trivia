@@ -8,6 +8,7 @@ type Question = {
   correct_option: string;
   difficulty_level: number;
   category: string | null;
+  image_url: string | null;
   time_limit_seconds: number;
 };
 
@@ -18,6 +19,7 @@ type QuestionDraft = {
   correct_option: string;
   difficulty_level: number;
   category: string | null;
+  image_url: string | null;
   status: string;
   generated_by: string;
   created_at: string;
@@ -45,6 +47,7 @@ const emptyForm = {
   correct_option: 'A',
   difficulty_level: 1,
   category: '',
+  image_url: '',
   time_limit_seconds: 12,
 };
 
@@ -54,6 +57,7 @@ export default function QuestionsPage() {
   const [filter, setFilter] = useState('');
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [genCategory, setGenCategory] = useState('');
   const [genRoundStart, setGenRoundStart] = useState(1);
@@ -142,8 +146,34 @@ export default function QuestionsPage() {
       correct_option: q.correct_option,
       difficulty_level: q.difficulty_level,
       category: q.category ?? '',
+      image_url: q.image_url ?? '',
       time_limit_seconds: q.time_limit_seconds,
     });
+  }
+
+  // Upload a picture to the public question-images bucket (staff-write via RLS) and
+  // put its public URL in the form. Used for "identify this image" fraud-resistant
+  // questions.
+  async function uploadImage(file: File) {
+    setUploadingImage(true);
+    setMessage(null);
+    try {
+      const ext = file.name.split('.').pop() || 'png';
+      const path = `${(form.category || 'misc').toLowerCase().replace(/[^a-z0-9]+/g, '-')}/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from('question-images').upload(path, file, {
+        cacheControl: '31536000',
+        contentType: file.type || undefined,
+        upsert: false,
+      });
+      if (error) throw error;
+      const { data } = supabase.storage.from('question-images').getPublicUrl(path);
+      setForm((f) => ({ ...f, image_url: data.publicUrl }));
+      setMessage('Image uploaded.');
+    } catch (err) {
+      setMessage(`Image upload failed: ${(err as Error).message}`);
+    } finally {
+      setUploadingImage(false);
+    }
   }
 
   async function submit(e: React.FormEvent) {
@@ -159,6 +189,7 @@ export default function QuestionsPage() {
         p_difficulty_level: form.difficulty_level,
         p_category: form.category || null,
         p_time_limit_seconds: form.time_limit_seconds,
+        p_image_url: form.image_url || null,
       });
       if (error) throw error;
       setMessage('Saved.');
@@ -280,7 +311,43 @@ export default function QuestionsPage() {
               onChange={(e) => setForm({ ...form, time_limit_seconds: Number(e.target.value) })}
             />
           </div>
-          <button type="submit" disabled={busy}>
+          <div style={{ marginBottom: 10 }}>
+            <label style={{ display: 'block', color: '#9a9aa5', fontSize: 13, marginBottom: 6 }}>
+              Picture (optional) — for fraud-resistant "identify this image" questions
+            </label>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                style={{ flex: 1, minWidth: 220 }}
+                placeholder="Image URL (or upload a file →)"
+                value={form.image_url}
+                onChange={(e) => setForm({ ...form, image_url: e.target.value })}
+              />
+              <input
+                type="file"
+                accept="image/*"
+                disabled={uploadingImage}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) uploadImage(file);
+                  e.target.value = '';
+                }}
+              />
+              {uploadingImage && <span style={{ color: '#9a9aa5', fontSize: 13 }}>Uploading…</span>}
+              {form.image_url && (
+                <button type="button" className="secondary" onClick={() => setForm({ ...form, image_url: '' })}>
+                  Remove
+                </button>
+              )}
+            </div>
+            {form.image_url && (
+              <img
+                src={form.image_url}
+                alt="question preview"
+                style={{ marginTop: 10, maxHeight: 120, borderRadius: 8, border: '1px solid #1c1c24' }}
+              />
+            )}
+          </div>
+          <button type="submit" disabled={busy || uploadingImage}>
             {form.question_id ? 'Save changes' : 'Add question'}
           </button>{' '}
           {form.question_id && (
@@ -323,7 +390,12 @@ export default function QuestionsPage() {
               {drafts.map((d) => (
                 <tr key={d.id}>
                   <td>{d.difficulty_level}</td>
-                  <td>{d.question_text}</td>
+                  <td>
+                    {d.image_url && (
+                      <img src={d.image_url} alt="" style={{ height: 32, borderRadius: 4, marginRight: 8, verticalAlign: 'middle' }} />
+                    )}
+                    {d.question_text}
+                  </td>
                   <td>{d.correct_option}</td>
                   <td>{d.category}</td>
                   <td style={{ display: 'flex', gap: 6 }}>
@@ -357,7 +429,12 @@ export default function QuestionsPage() {
             {filtered.map((q) => (
               <tr key={q.question_id}>
                 <td>{q.difficulty_level}</td>
-                <td>{q.question_text}</td>
+                <td>
+                  {q.image_url && (
+                    <img src={q.image_url} alt="" style={{ height: 32, borderRadius: 4, marginRight: 8, verticalAlign: 'middle' }} />
+                  )}
+                  {q.question_text}
+                </td>
                 <td>{q.correct_option}</td>
                 <td>{q.category}</td>
                 <td>
