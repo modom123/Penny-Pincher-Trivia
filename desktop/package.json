@@ -16,8 +16,29 @@
   "build": {
     "appId": "com.pennypincher.trivia.desktop",
     "productName": "Penny Pincher",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "files": ["main.js", "preload.js", "web-build/**/*"],
-    "mac": { "category": "public.app-category.games" },
-    "win": { "target": "nsis" }
+    "directories": { "output": "dist" },
+    "mac": {
+      "category": "public.app-category.games",
+      "icon": "icon.png",
+      "target": ["dmg"]
+    },
+    "dmg": {
+      "background": "build-icon.png"
+    },
+    "win": {
+      "icon": "icon.png",
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "modom123",
+      "repo": "Penny-Pincher-Trivia"
+    }
   }
 }
