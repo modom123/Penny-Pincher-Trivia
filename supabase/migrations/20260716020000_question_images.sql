@@ -186,16 +186,18 @@ create policy "question_images_staff_delete" on storage.objects
 -- one. Flag images are public domain. Uses the live project's storage origin.
 insert into public.question_drafts
   (question_text, options, correct_option, difficulty_level, category, image_url, generated_by, status)
-values
+select v.question_text, v.options, v.correct_option, v.difficulty_level, v.category, v.image_url, 'staff', 'pending_review'
+from (values
   ('Which country''s flag is shown in the image?',
    '{"A":"China","B":"Japan","C":"South Korea","D":"Bangladesh"}'::jsonb, 'B', 6, 'Flags',
-   'https://pkvdthwqvjpxhqorfpub.supabase.co/storage/v1/object/public/question-images/flags/japan.png',
-   'staff', 'pending_review'),
+   'https://pkvdthwqvjpxhqorfpub.supabase.co/storage/v1/object/public/question-images/flags/japan.png'),
   ('Which country''s flag is shown in the image?',
    '{"A":"France","B":"Italy","C":"Ireland","D":"Mexico"}'::jsonb, 'A', 10, 'Flags',
-   'https://pkvdthwqvjpxhqorfpub.supabase.co/storage/v1/object/public/question-images/flags/france.png',
-   'staff', 'pending_review'),
+   'https://pkvdthwqvjpxhqorfpub.supabase.co/storage/v1/object/public/question-images/flags/france.png'),
   ('Which country''s flag is shown in the image?',
    '{"A":"Argentina","B":"Portugal","C":"Brazil","D":"Colombia"}'::jsonb, 'C', 14, 'Flags',
-   'https://pkvdthwqvjpxhqorfpub.supabase.co/storage/v1/object/public/question-images/flags/brazil.png',
-   'staff', 'pending_review');
+   'https://pkvdthwqvjpxhqorfpub.supabase.co/storage/v1/object/public/question-images/flags/brazil.png')
+) as v(question_text, options, correct_option, difficulty_level, category, image_url)
+where not exists (
+  select 1 from public.question_drafts d where d.image_url = v.image_url
+);
