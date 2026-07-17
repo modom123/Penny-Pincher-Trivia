@@ -21,6 +21,7 @@ alter table public.question_drafts add column if not exists image_url text;
 -- list changes); named-arg callers that omit it get the default null. Behaviour is
 -- otherwise identical to 20260706100100.
 drop function if exists public.admin_upsert_question(uuid, text, jsonb, varchar, int, varchar, int);
+drop function if exists public.admin_upsert_question(uuid, text, jsonb, varchar, int, varchar, int, text);
 create function public.admin_upsert_question(
   p_question_id uuid, p_question_text text, p_options jsonb, p_correct_option varchar,
   p_difficulty_level int, p_category varchar, p_time_limit_seconds int,
