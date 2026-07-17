@@ -32,8 +32,9 @@ for (const [domain, subjects] of Object.entries(taxonomy)) {
 }
 
 const domains = Object.keys(taxonomy).length;
-if (rows.length !== domains * 20) {
-  console.warn(`Warning: expected ${domains * 20} subjects, got ${rows.length}`);
+const counts = Object.values(taxonomy).map((s) => s.length);
+if (new Set(counts).size > 1) {
+  console.warn(`Warning: domains have uneven subject counts: ${counts.join(", ")}`);
 }
 
 // 1. subjects.json
