@@ -10,3 +10,4 @@ dist/
 # Expo web export (build artifact)
 mobile/web-build/
 desktop/web-build/
+command-center-desktop/web-build/

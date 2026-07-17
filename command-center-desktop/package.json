@@ -1,0 +1,44 @@
+{
+  "name": "penny-pincher-command-center-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main.js",
+  "description": "Electron shell that runs the Penny Pincher staff Command Center (Vite/React) as a desktop app for Mac and Windows.",
+  "scripts": {
+    "build-web": "cd ../command-center && npm run build -- --outDir ../command-center-desktop/web-build --base ./ --emptyOutDir",
+    "start": "npm run build-web && electron .",
+    "dist": "npm run build-web && electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^31.3.1",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.pennypincher.trivia.commandcenter",
+    "productName": "Penny Pincher Command Center",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "files": ["main.js", "preload.js", "web-build/**/*"],
+    "directories": { "output": "dist" },
+    "mac": {
+      "category": "public.app-category.business",
+      "icon": "icon.png",
+      "target": ["dmg"]
+    },
+    "dmg": {
+      "background": "build-background.png"
+    },
+    "win": {
+      "icon": "icon.png",
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "modom123",
+      "repo": "Penny-Pincher-Trivia"
+    }
+  }
+}
