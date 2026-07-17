@@ -90,9 +90,19 @@ begin
     v_draft.difficulty_level, v_draft.category, v_draft.time_limit_seconds, v_draft.image_url
   );
 
-  update public.questions
-  set subject_id = v_draft.subject_id, grade_level = v_draft.grade_level
-  where question_id = v_question.question_id;
+  -- Carry subject_id/grade_level onto the promoted question, but only if the
+  -- subjects/curator layer (migration 20260706190000) is present. Dynamic SQL so
+  -- the function still creates and runs on databases without those columns.
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'question_drafts' and column_name = 'subject_id'
+  ) then
+    execute
+      'update public.questions q set subject_id = d.subject_id, grade_level = d.grade_level
+         from public.question_drafts d
+        where d.id = $1 and q.question_id = $2'
+      using p_draft_id, v_question.question_id;
+  end if;
 
   update public.question_drafts set status = 'approved', reviewed_by = auth.uid(), reviewed_at = now()
   where id = p_draft_id;
