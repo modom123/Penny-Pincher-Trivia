@@ -27,7 +27,7 @@ with real_q(lvl, qtext, a, b, c, d, correct, cat) as (
   values
   (1, 'How many days are in a week?', 'Five', 'Seven', 'Six', 'Eight', 'B', 'General Knowledge'),
   (2, 'What color do you get by mixing blue and yellow?', 'Green', 'Purple', 'Orange', 'Brown', 'A', 'Science'),
-  (3, 'Which animal is commonly known as "man''s best friend"?', 'Cat', 'Dog', 'Horse', 'Rabbit', 'B', 'General Knowledge'),
+  (3, 'Which animal is famously described as a human best friend?', 'Cat', 'Dog', 'Horse', 'Rabbit', 'B', 'General Knowledge'),
   (4, 'How many legs does a spider have?', 'Eight', 'Six', 'Ten', 'Four', 'A', 'Science'),
   (5, 'What is 5 + 7?', '10', '11', '12', '13', 'C', 'Math'),
   (6, 'Which planet do we live on?', 'Earth', 'Venus', 'Mars', 'Jupiter', 'A', 'Science'),
@@ -69,7 +69,7 @@ with real_q(lvl, qtext, a, b, c, d, correct, cat) as (
   (42, 'Who developed the theory of general relativity?', 'Isaac Newton', 'Albert Einstein', 'Galileo Galilei', 'Nikola Tesla', 'B', 'Science'),
   (43, 'What is the capital of Japan?', 'Beijing', 'Tokyo', 'Seoul', 'Bangkok', 'B', 'Geography'),
   (44, 'How many bones are in the adult human body?', '206', '106', '306', '406', 'A', 'Science'),
-  (45, 'Which gas makes up the greatest share of Earth''s atmosphere?', 'Oxygen', 'Carbon dioxide', 'Hydrogen', 'Nitrogen', 'D', 'Science'),
+  (45, 'Which gas makes up the greatest share of the atmosphere on Earth?', 'Oxygen', 'Carbon dioxide', 'Hydrogen', 'Nitrogen', 'D', 'Science'),
   (46, 'Who wrote "Pride and Prejudice"?', 'Charlotte Bronte', 'Mary Shelley', 'Emily Dickinson', 'Jane Austen', 'D', 'Literature'),
   (47, 'What is the official currency of Japan?', 'Yen', 'Won', 'Yuan', 'Ringgit', 'A', 'General Knowledge'),
   (48, 'What is the value of 7 factorial (7!)?', '40320', '720', '5040', '4050', 'C', 'Math'),
@@ -119,12 +119,12 @@ with real_q(lvl, qtext, a, b, c, d, correct, cat) as (
   (92, 'What is the derivative of sin(x) with respect to x?', 'tan(x)', '-cos(x)', '-sin(x)', 'cos(x)', 'D', 'Math'),
   (93, 'Which element is the most electronegative on the periodic table?', 'Oxygen', 'Nitrogen', 'Chlorine', 'Fluorine', 'D', 'Science'),
   (94, 'In what year did the Berlin Wall fall?', '1987', '1991', '1989', '1993', 'C', 'History'),
-  (95, 'Avogadro''s number is approximately equal to which value?', '6.02 x 10^23', '3.14 x 10^23', '9.81 x 10^23', '1.60 x 10^19', 'A', 'Science'),
+  (95, 'The Avogadro constant is approximately equal to which value?', '6.02 x 10^23', '3.14 x 10^23', '9.81 x 10^23', '1.60 x 10^19', 'A', 'Science'),
   (96, 'Whose incompleteness theorems proved that any sufficiently powerful formal system contains true statements it cannot prove?', 'Alan Turing', 'Kurt Godel', 'David Hilbert', 'Bertrand Russell', 'B', 'Math'),
   (97, 'What is the chemical symbol for potassium?', 'P', 'K', 'Po', 'Pt', 'B', 'Science'),
   (98, 'Protons and neutrons are each composed of which more fundamental particles?', 'Electrons', 'Photons', 'Quarks', 'Neutrinos', 'C', 'Science'),
   (99, 'What is the indefinite integral of e^x with respect to x?', 'ln(x) + C', 'x*e^x + C', 'e^x + C', 'e^(x+1) + C', 'C', 'Math'),
-  (100, 'Einstein''s equation E = mc^2 expresses the equivalence of which two quantities?', 'Pressure and volume', 'Force and acceleration', 'Voltage and current', 'Energy and mass', 'D', 'Science')
+  (100, 'The famous equation E = mc^2 expresses the equivalence of which two quantities?', 'Pressure and volume', 'Force and acceleration', 'Voltage and current', 'Energy and mass', 'D', 'Science')
 )
 update public.questions q
 set question_text  = r.qtext,

@@ -64,13 +64,13 @@ from (values
   -- Automobiles
   ('Which company produces the Mustang car model?', '{"A":"Chevrolet","B":"Ford","C":"Dodge","D":"Toyota"}'::jsonb, 'B', 20, 'Automobiles'),
   ('In cars, what does the abbreviation "EV" stand for?', '{"A":"Extra Value","B":"Electric Vehicle","C":"Engine Volume","D":"Exhaust Valve"}'::jsonb, 'B', 15, 'Automobiles'),
-  ('A car''s RPM gauge measures the revolutions per minute of what?', '{"A":"The wheels","B":"The fan","C":"The engine","D":"The steering"}'::jsonb, 'C', 30, 'Automobiles'),
+  ('On a car, the RPM gauge measures the revolutions per minute of what?', '{"A":"The wheels","B":"The fan","C":"The engine","D":"The steering"}'::jsonb, 'C', 30, 'Automobiles'),
   -- Trains
-  ('What is the name of Japan''s high-speed bullet train network?', '{"A":"Maglev","B":"TGV","C":"Shinkansen","D":"Acela"}'::jsonb, 'C', 40, 'Trains'),
+  ('What is the name of the high-speed bullet train network in Japan?', '{"A":"Maglev","B":"TGV","C":"Shinkansen","D":"Acela"}'::jsonb, 'C', 40, 'Trains'),
   ('A steam locomotive is powered by burning fuel to boil water into what?', '{"A":"Hydrogen","B":"Oil","C":"Gas","D":"Steam"}'::jsonb, 'D', 25, 'Trains'),
   ('A railway track is traditionally made of two parallel what?', '{"A":"Cables","B":"Beams","C":"Rails","D":"Pipes"}'::jsonb, 'C', 8, 'Trains'),
   -- Skyscrapers
-  ('The Burj Khalifa, the world''s tallest building, is located in which city?', '{"A":"Shanghai","B":"Dubai","C":"New York","D":"Kuala Lumpur"}'::jsonb, 'B', 30, 'Skyscrapers'),
+  ('The Burj Khalifa, the tallest building in the world, is located in which city?', '{"A":"Shanghai","B":"Dubai","C":"New York","D":"Kuala Lumpur"}'::jsonb, 'B', 30, 'Skyscrapers'),
   ('The Empire State Building is located in which U.S. city?', '{"A":"Chicago","B":"Los Angeles","C":"Boston","D":"New York City"}'::jsonb, 'D', 15, 'Skyscrapers'),
   ('Which invention was essential to making tall skyscrapers practical for people?', '{"A":"The escalator","B":"The revolving door","C":"The elevator","D":"Air conditioning"}'::jsonb, 'C', 40, 'Skyscrapers'),
   -- Stocks
