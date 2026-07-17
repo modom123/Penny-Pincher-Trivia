@@ -21,7 +21,7 @@ require("dotenv").config();
 const lib = require("./lib");
 
 const args = lib.parseArgs(process.argv.slice(2));
-const TARGET_PER_GRADE = lib.int(args.target, 25);
+const TARGET_PER_GRADE = lib.int(args.target, 50); // 50/grade x 20 = 1000/subject target
 const PER_CALL = Math.min(lib.int(args["per-call"], 10), 20);
 const CONCURRENCY = lib.int(args.concurrency, 4);
 const DRY_RUN = !!args["dry-run"];
