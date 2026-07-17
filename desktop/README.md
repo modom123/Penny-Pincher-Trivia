@@ -30,17 +30,61 @@ npm run dist   # runs electron-builder - produces a .dmg (mac) / installer (win)
 ## Security
 
 - `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true` - the
-  renderer gets no Node/Electron APIs. `preload.js` is intentionally empty; add
-  `contextBridge.exposeInMainWorld` there if a future feature needs one.
-- `setWindowOpenHandler` denies all in-app popups and routes anything that tries
-  to `window.open` to the system browser instead.
+  renderer gets no Node/Electron APIs beyond the two things `preload.js`
+  exposes (see below).
+- `setWindowOpenHandler` denies all in-app popups and routes anything that
+  tries to `window.open` to the system browser instead - this is also how
+  Google's OAuth consent screen gets opened (see below).
 - `will-navigate` blocks the app window from being navigated to an untrusted
-  origin. Only the local bundle (`file://`) and a small allowlist - Google OAuth
-  (`accounts.google.com`), the Supabase project itself, and Stripe checkout
-  (`checkout.stripe.com`, `js.stripe.com`) - can navigate in place. Everything
-  else opens in the system browser rather than hijacking the app window. Update
-  the `ALLOWED_NAVIGATION_HOSTS` list in `main.js` if a new trusted redirect
-  target (e.g. a different payment or auth provider) is added.
+  origin. Only the local bundle (`file://`) and Stripe checkout
+  (`checkout.stripe.com`, `js.stripe.com`) can navigate in place - Stripe
+  doesn't mind rendering inside an embedded webview. Everything else opens in
+  the system browser rather than hijacking the app window. Update the
+  `ALLOWED_NAVIGATION_HOSTS` list in `main.js` if a new trusted in-window
+  redirect target is added.
+
+## Google sign-in (and why it doesn't just navigate the window)
+
+Google's OAuth policy blocks its consent screen outright inside embedded
+WebView user agents (Electron included) - "This browser or app may not be
+secure." So `signInWithGoogle` (`mobile/src/contexts/AuthContext.tsx`) detects
+it's running in Electron (`window.electronBridge`, exposed by `preload.js`)
+and instead:
+
+1. Calls `signInWithOAuth` with `skipBrowserRedirect: true` to get the Google
+   URL back without navigating, then opens it with `window.open` - which
+   `setWindowOpenHandler` in `main.js` routes to the user's real system
+   browser via `shell.openExternal`.
+2. The whole round trip (Google consent -> Supabase's callback -> final
+   redirect) happens in that system browser tab, ending at a
+   `pennypincher://auth-callback` URL instead of an `https://` one - `file://`
+   isn't something Supabase's redirect allow-list can practically hold (it's a
+   different absolute path per OS/install).
+3. The OS treats that as a request to relaunch this app (`main.js` registers
+   it via `app.setAsDefaultProtocolClient('pennypincher')` and handles both
+   `open-url` on mac and the `second-instance` argv on Windows/Linux), which
+   forwards the callback URL to the already-open renderer over `ipcRenderer`.
+   `AuthContext` completes the session from it (`exchangeCodeForSession` for
+   PKCE, `setSession` for implicit hash tokens - handled defensively either
+   way since the client's flow type isn't pinned).
+
+**Required one-time setup, not something this repo can configure:** add
+`pennypincher://auth-callback` (or `pennypincher://**`) to Supabase Auth ->
+URL Configuration -> Redirect URLs in the dashboard. Without it Supabase will
+reject the redirect and sign-in will fail after the Google consent screen.
+
+## Stripe checkout on desktop
+
+`create-checkout-session`'s `success_url`/`cancel_url` are fixed `https://`
+URLs computed server-side from `APP_PUBLIC_URL` (not from `window.location`),
+so they were never actually broken by packaging. What differs on desktop:
+Stripe checkout itself opens in the app window (`checkout.stripe.com` is
+allowlisted), but its return to `success_url` is not an allowlisted host, so
+`will-navigate` sends that hop to the system browser instead of reloading the
+app - meaning the web build's `/wallet/success` polling effect
+(`WalletScreen.tsx`) never fires here. Instead, `WalletScreen` refreshes the
+balance whenever the Electron window regains focus (`onWindowFocus` from the
+bridge), which covers the common case of alt-tabbing back after paying.
 
 ## Known gaps
 
@@ -62,10 +106,11 @@ npm run dist   # runs electron-builder - produces a .dmg (mac) / installer (win)
   `electron-builder --publish` has somewhere to push releases, but no
   `electron-updater` dependency or update-check code has been added to
   `main.js`. Add both before relying on auto-update in production.
-- **Google/Stripe OAuth+checkout redirects assume an `https://` origin.**
-  `signInWithGoogle` computes `redirectTo` from `window.location.origin`, which
-  is `file://` inside the packaged app - Google/Stripe will reject a `file://`
-  redirect URI. Sign-in/checkout that redirects away from the app will need a
-  real redirect target (e.g. a custom protocol handler, or a hosted page that
-  deep-links back) before those flows work end-to-end in the packaged desktop
-  app; this is a product-flow gap, not a build issue.
+- **Google sign-in needs the Supabase dashboard step above done once** before
+  it will work in a packaged build (see "Google sign-in").
+- **Not tested against a live Google OAuth consent screen in this sandbox** -
+  there's no way to complete a real browser-based Google login here. The code
+  path (`skipBrowserRedirect` + `shell.openExternal` + custom-protocol
+  deep-link + `exchangeCodeForSession`/`setSession`) is syntax- and
+  type-checked but hasn't been exercised end-to-end; test it on a machine that
+  can actually run the packaged app before shipping.

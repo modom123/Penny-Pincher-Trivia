@@ -42,7 +42,8 @@ npm run dist                  # build-web, then electron-builder -> dist/*.dmg /
 - `will-navigate` blocks the window from being navigated to an untrusted
   origin. Only the local bundle (`file://`) plus a short per-app allowlist in
   `main.js` (`ALLOWED_NAVIGATION_HOSTS`) can navigate in place:
-  - Player app: Google OAuth, the Supabase project, Stripe checkout.
+  - Player app: Stripe checkout only. Google OAuth deliberately does **not**
+    navigate the app window — see `desktop/README.md` § Google sign-in.
   - Command Center: the Supabase project only (staff sign in with
     email/password — no OAuth/payment redirect today).
 
@@ -65,10 +66,10 @@ project URL + publishable anon key:
 - **No auto-update wired into the app code.** `package.json`'s `build.publish`
   only gives `electron-builder --publish` somewhere to push releases; neither
   app has an `electron-updater` dependency or update-check call yet.
-- **Player app only:** `signInWithGoogle`'s OAuth redirect and the Stripe
-  checkout redirect (`WalletScreen.tsx`) both compute their return URL from
-  `window.location.origin`, which is `file://` inside the packaged app.
-  Google/Stripe will reject a `file://` redirect target, so those two flows
-  need a real redirect destination (a custom protocol handler, or a hosted
-  page that deep-links back) before they work end-to-end in the packaged
-  desktop build. This is a product-flow gap, not a build issue.
+- **Player app only:** Google sign-in now goes through the system browser and
+  a `pennypincher://` deep link back into the app (see `desktop/README.md`),
+  but it needs a one-time dashboard step — add `pennypincher://auth-callback`
+  to Supabase Auth's allowed Redirect URLs — and hasn't been exercised against
+  a live Google consent screen in this sandbox (no way to complete that
+  browser flow here). Test it end-to-end on a machine that can run the
+  packaged app before shipping.

@@ -11,6 +11,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    // Lets supabase-js pick up the session from the URL when Google OAuth
+    // redirects back on web/desktop (a no-op on native RN — there's no
+    // window.location there). The Electron deep-link callback is consumed
+    // separately (see AuthContext), since it never reloads this page.
+    detectSessionInUrl: true,
   },
 });

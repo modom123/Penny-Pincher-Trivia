@@ -47,6 +47,17 @@ export default function WalletScreen() {
     }, [load])
   );
 
+  // Desktop: Stripe checkout opens in the system browser (the app window
+  // won't navigate to an untrusted origin - see desktop/main.js), so the
+  // /wallet/success reload the web polling effect below relies on never
+  // happens in here. Refresh when the user switches back to the app instead;
+  // the webhook has usually already credited the wallet by then.
+  useEffect(() => {
+    const bridge = (window as any)?.electronBridge;
+    if (!bridge) return;
+    return bridge.onWindowFocus(() => load());
+  }, [load]);
+
   // Returning from Stripe Checkout on web (…/wallet/success?session_id=…): the
   // webhook credits asynchronously, so poll a couple of times to reflect the new
   // balance, then clean the URL.
