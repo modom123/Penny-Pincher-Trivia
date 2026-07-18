@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, FlatList, Pressable, StyleSheet, RefreshControl, Alert } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, RefreshControl, Alert } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
@@ -105,6 +105,81 @@ export default function LobbyScreen() {
     [load]
   );
 
+  const renderGameCard = (item: Game) => {
+    const meta = MODE_META[item.mode];
+    const isRegistration = item.status === 'registration';
+    const canJoin = item.join_open && !item.is_registered;
+    const showFooter = (isRegistration || item.status === 'active') && (canJoin || item.is_registered);
+    return (
+      <Pressable
+        key={item.game_id}
+        style={styles.card}
+        disabled={isRegistration}
+        onPress={() => navigation.navigate('Game', { gameId: item.game_id })}
+      >
+        <View style={styles.cardTop}>
+          <Text style={styles.cardMode}>{meta.label}</Text>
+          {item.subject_name ? <Text style={styles.subjectBadge}>{item.subject_name}</Text> : null}
+        </View>
+        <Text style={styles.cardTag}>{meta.tag}</Text>
+
+        <View style={styles.poolRow}>
+          <View>
+            <Text style={styles.poolLabel}>PRIZE POOL</Text>
+            <Text style={styles.poolValue}>{money(item.total_prize_pool_cents)}</Text>
+          </View>
+          <View style={styles.roundBox}>
+            {isRegistration ? (
+              <>
+                <Text style={styles.roundLabelSm}>STARTS IN</Text>
+                <Text style={styles.countdown}>{formatCountdown(item.scheduled_start_at, nowMs)}</Text>
+              </>
+            ) : (
+              <Text style={styles.roundText}>
+                {item.status === 'pending' ? 'Starting soon' : `Round ${item.current_round}/${item.total_rounds}`}
+              </Text>
+            )}
+          </View>
+        </View>
+
+        {showFooter && (
+          <View style={styles.regFooter}>
+            <Text style={styles.regMeta}>
+              {item.player_count} {isRegistration ? 'signed up' : 'in'}
+              {item.entry_fee_cents > 0 ? `  ·  entry ${money(item.entry_fee_cents)}` : ''}
+            </Text>
+            {item.is_registered ? (
+              <View style={styles.signedUpPill}>
+                <Text style={styles.signedUpText}>✓ {isRegistration ? 'Signed up' : "You're in"}</Text>
+              </View>
+            ) : canJoin ? (
+              <Pressable
+                style={styles.signUpBtn}
+                disabled={signingUp === item.game_id}
+                onPress={() => signUp(item)}
+              >
+                <Text style={styles.signUpText}>
+                  {signingUp === item.game_id
+                    ? isRegistration
+                      ? 'Signing up…'
+                      : 'Joining…'
+                    : `${isRegistration ? 'Sign up' : 'Join now'}${
+                        item.entry_fee_cents > 0 ? ` · ${money(item.entry_fee_cents)}` : ''
+                      }`}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        )}
+
+        {item.in_sudden_death && <Text style={styles.suddenDeath}>⚡ SUDDEN DEATH OVERTIME</Text>}
+      </Pressable>
+    );
+  };
+
+  const liveGames = games.filter((g) => g.status === 'active');
+  const upcomingGames = games.filter((g) => g.status !== 'active');
+
   return (
     <View style={styles.container}>
       {/* Top bar: avatar, unified Penny Wallet balance + quick deposit */}
@@ -116,6 +191,9 @@ export default function LobbyScreen() {
             <Text style={styles.plusText}>+</Text>
           </View>
         </Pressable>
+        <Pressable onPress={() => navigation.navigate('Leaderboard')}>
+          <Text style={styles.leaderboardLink}>🏆</Text>
+        </Pressable>
         <Pressable onPress={signOut}>
           <Text style={styles.signOut}>Sign out</Text>
         </Pressable>
@@ -125,83 +203,26 @@ export default function LobbyScreen() {
 
       <RegionGate />
 
-      <FlatList
-        data={games}
-        keyExtractor={(item) => item.game_id}
-        refreshControl={<RefreshControl tintColor={theme.emerald} refreshing={refreshing} onRefresh={load} />}
+      <ScrollView
         contentContainerStyle={{ paddingBottom: 24 }}
-        ListEmptyComponent={<Text style={styles.empty}>No games right now. Pull to refresh.</Text>}
-        renderItem={({ item }) => {
-          const meta = MODE_META[item.mode];
-          const isRegistration = item.status === 'registration';
-          const canJoin = item.join_open && !item.is_registered;
-          const showFooter = (isRegistration || item.status === 'active') && (canJoin || item.is_registered);
-          return (
-            <Pressable
-              style={styles.card}
-              disabled={isRegistration}
-              onPress={() => navigation.navigate('Game', { gameId: item.game_id })}
-            >
-              <View style={styles.cardTop}>
-                <Text style={styles.cardMode}>{meta.label}</Text>
-                {item.subject_name ? <Text style={styles.subjectBadge}>{item.subject_name}</Text> : null}
-              </View>
-              <Text style={styles.cardTag}>{meta.tag}</Text>
+        refreshControl={<RefreshControl tintColor={theme.emerald} refreshing={refreshing} onRefresh={load} />}
+      >
+        {games.length === 0 && <Text style={styles.empty}>No games right now. Pull to refresh.</Text>}
 
-              <View style={styles.poolRow}>
-                <View>
-                  <Text style={styles.poolLabel}>PRIZE POOL</Text>
-                  <Text style={styles.poolValue}>{money(item.total_prize_pool_cents)}</Text>
-                </View>
-                <View style={styles.roundBox}>
-                  {isRegistration ? (
-                    <>
-                      <Text style={styles.roundLabelSm}>STARTS IN</Text>
-                      <Text style={styles.countdown}>{formatCountdown(item.scheduled_start_at, nowMs)}</Text>
-                    </>
-                  ) : (
-                    <Text style={styles.roundText}>
-                      {item.status === 'pending' ? 'Starting soon' : `Round ${item.current_round}/${item.total_rounds}`}
-                    </Text>
-                  )}
-                </View>
-              </View>
+        {liveGames.length > 0 && (
+          <>
+            <Text style={styles.sectionHeading}>🔴 Live Now</Text>
+            {liveGames.map(renderGameCard)}
+          </>
+        )}
 
-              {showFooter && (
-                <View style={styles.regFooter}>
-                  <Text style={styles.regMeta}>
-                    {item.player_count} {isRegistration ? 'signed up' : 'in'}
-                    {item.entry_fee_cents > 0 ? `  ·  entry ${money(item.entry_fee_cents)}` : ''}
-                  </Text>
-                  {item.is_registered ? (
-                    <View style={styles.signedUpPill}>
-                      <Text style={styles.signedUpText}>✓ {isRegistration ? 'Signed up' : "You're in"}</Text>
-                    </View>
-                  ) : canJoin ? (
-                    <Pressable
-                      style={styles.signUpBtn}
-                      disabled={signingUp === item.game_id}
-                      onPress={() => signUp(item)}
-                    >
-                      <Text style={styles.signUpText}>
-                        {signingUp === item.game_id
-                          ? isRegistration
-                            ? 'Signing up…'
-                            : 'Joining…'
-                          : `${isRegistration ? 'Sign up' : 'Join now'}${
-                              item.entry_fee_cents > 0 ? ` · ${money(item.entry_fee_cents)}` : ''
-                            }`}
-                      </Text>
-                    </Pressable>
-                  ) : null}
-                </View>
-              )}
-
-              {item.in_sudden_death && <Text style={styles.suddenDeath}>⚡ SUDDEN DEATH OVERTIME</Text>}
-            </Pressable>
-          );
-        }}
-      />
+        {upcomingGames.length > 0 && (
+          <>
+            <Text style={styles.sectionHeading}>⏱ Starting Soon</Text>
+            {upcomingGames.map(renderGameCard)}
+          </>
+        )}
+      </ScrollView>
     </View>
   );
 }
@@ -226,9 +247,11 @@ const styles = StyleSheet.create({
   walletBalance: { color: theme.gold, fontSize: 18, fontWeight: '900' },
   plus: { width: 30, height: 30, borderRadius: 15, backgroundColor: theme.emerald, alignItems: 'center', justifyContent: 'center' },
   plusText: { color: theme.bg, fontSize: 22, fontWeight: '900', marginTop: -2 },
+  leaderboardLink: { fontSize: 22, marginLeft: 14 },
   signOut: { color: theme.textMuted, marginLeft: 14, fontSize: 13 },
 
   heading: { color: theme.text, fontSize: 26, fontWeight: '900', marginBottom: 14 },
+  sectionHeading: { color: theme.textMuted, fontSize: 13, fontWeight: '800', letterSpacing: 1, marginBottom: 10, marginTop: 4 },
   empty: { color: theme.textMuted, textAlign: 'center', marginTop: 48 },
 
   card: {

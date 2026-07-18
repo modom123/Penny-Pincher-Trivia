@@ -39,6 +39,7 @@ export type RootStackParamList = {
   Username: undefined;
   Lobby: undefined;
   Wallet: undefined;
+  Leaderboard: undefined;
   Game: { gameId: string };
   Results: { payload: GameCompletedPayload };
 };
