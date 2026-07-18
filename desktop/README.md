@@ -36,9 +36,11 @@ npm run dist   # runs electron-builder - produces a .dmg (mac) / installer (win)
   tries to `window.open` to the system browser instead - this is also how
   Google's OAuth consent screen gets opened (see below).
 - `will-navigate` blocks the app window from being navigated to an untrusted
-  origin. Only the local bundle (`file://`) and Stripe checkout
-  (`checkout.stripe.com`, `js.stripe.com`) can navigate in place - Stripe
-  doesn't mind rendering inside an embedded webview. Everything else opens in
+  origin. Only the local bundle (`file://`) and first-party Stripe surfaces
+  (`checkout.stripe.com`, `js.stripe.com`, `connect.stripe.com`,
+  `verify.stripe.com` - checkout, Connect onboarding, and Identity
+  verification) can navigate in place - Stripe doesn't mind rendering inside
+  an embedded webview. Everything else opens in
   the system browser rather than hijacking the app window. Update the
   `ALLOWED_NAVIGATION_HOSTS` list in `main.js` if a new trusted in-window
   redirect target is added.

@@ -1,16 +1,23 @@
 const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 
-// Domains the app window is allowed to navigate to in-place: just Stripe's
-// hosted checkout (wallet top-ups) - Stripe doesn't mind rendering inside an
-// embedded webview. Google OAuth deliberately does NOT navigate the app
-// window at all (see AuthContext.signInWithGoogle): Google blocks its consent
-// screen outright inside embedded/WebView user agents like this one, so that
-// flow opens in the user's real system browser and only ever hands this
-// window a pennypincher:// deep link at the very end. Anything not in this
-// list tries to hijack the window instead of opening a real link, so it gets
-// sent to the system browser instead - see will-navigate below.
-const ALLOWED_NAVIGATION_HOSTS = ['checkout.stripe.com', 'js.stripe.com'];
+// Domains the app window is allowed to navigate to in-place: Stripe's hosted
+// checkout (wallet top-ups), Connect onboarding (linking a payout account),
+// and Identity verification (KYC) - all first-party Stripe surfaces that
+// don't mind rendering inside an embedded webview. Google OAuth deliberately
+// does NOT navigate the app window at all (see AuthContext.signInWithGoogle):
+// Google blocks its consent screen outright inside embedded/WebView user
+// agents like this one, so that flow opens in the user's real system browser
+// and only ever hands this window a pennypincher:// deep link at the very
+// end. Anything not in this list tries to hijack the window instead of
+// opening a real link, so it gets sent to the system browser instead - see
+// will-navigate below.
+const ALLOWED_NAVIGATION_HOSTS = [
+  'checkout.stripe.com',
+  'js.stripe.com',
+  'connect.stripe.com',
+  'verify.stripe.com',
+];
 
 // Custom protocol Supabase's OAuth callback redirects to instead of an https
 // origin - file:// isn't an origin Supabase's redirect allow-list can

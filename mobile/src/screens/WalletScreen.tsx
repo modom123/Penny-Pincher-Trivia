@@ -25,7 +25,20 @@ type Compliance = {
   walletBalanceCents: number;
   promoBalanceCents: number;
   withdrawableCents: number;
+  stripeConnectLinked: boolean;
+  stripeConnectPayoutsEnabled: boolean;
 };
+
+// Web: navigate the current tab/window. Native: hand off to the OS browser.
+// Shared by checkout, Connect onboarding, and Identity verification - all
+// three are "go complete this on a Stripe-hosted page, then come back".
+function openUrl(url: string) {
+  if (isWeb && typeof window !== 'undefined') {
+    window.location.assign(url);
+  } else {
+    Linking.openURL(url);
+  }
+}
 
 export default function WalletScreen() {
   const [compliance, setCompliance] = useState<Compliance | null>(null);
@@ -58,20 +71,22 @@ export default function WalletScreen() {
     return bridge.onWindowFocus(() => load());
   }, [load]);
 
-  // Returning from Stripe Checkout on web (…/wallet/success?session_id=…): the
-  // webhook credits asynchronously, so poll a couple of times to reflect the new
-  // balance, then clean the URL.
+  // Returning from a Stripe-hosted flow on web (checkout, Connect onboarding,
+  // or Identity verification): the result is applied asynchronously by
+  // stripe-webhook, so poll a couple of times to pick it up, then clean the URL.
+  const RETURN_PATHS = ['/wallet/success', '/wallet/connect-return', '/wallet/identity-return'];
   useEffect(() => {
     if (!isWeb || typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    if (!params.get('session_id') && !window.location.pathname.includes('/wallet/success')) return;
+    const matchedPath = RETURN_PATHS.find((p) => window.location.pathname.includes(p));
+    if (!params.get('session_id') && !matchedPath) return;
     let tries = 0;
     const iv = setInterval(async () => {
       tries += 1;
       await load();
       if (tries >= 4) clearInterval(iv);
     }, 1500);
-    window.history.replaceState({}, '', window.location.pathname.replace('/wallet/success', '/'));
+    if (matchedPath) window.history.replaceState({}, '', window.location.pathname.replace(matchedPath, '/'));
     return () => clearInterval(iv);
   }, [load]);
 
@@ -81,15 +96,37 @@ export default function WalletScreen() {
       const { data, error } = await supabase.functions.invoke('create-checkout-session', { body: { bundleId } });
       if (error) throw error;
       // Web-to-app funding (the launch playbook's "payment loophole"): send the
-      // player to Stripe Checkout in the browser; the webhook credits the wallet
-      // and Supabase Realtime syncs the balance back into the app on return.
-      if (isWeb && typeof window !== 'undefined') {
-        window.location.assign(data.checkoutUrl);
-      } else {
-        Linking.openURL(data.checkoutUrl);
-      }
+      // player to Stripe Checkout; the webhook credits the wallet and the return
+      // leg above (or a focus refresh on desktop) syncs the balance back.
+      openUrl(data.checkoutUrl);
     } catch (err) {
       Alert.alert('Checkout failed', (err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function linkPayoutAccount() {
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('connect-onboarding');
+      if (error) throw error;
+      openUrl(data.url);
+    } catch (err) {
+      Alert.alert('Could not start onboarding', (err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function startIdentityVerification() {
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-identity-verification');
+      if (error) throw error;
+      openUrl(data.url);
+    } catch (err) {
+      Alert.alert('Could not start verification', (err as Error).message);
     } finally {
       setBusy(false);
     }
@@ -146,7 +183,9 @@ export default function WalletScreen() {
 
   const c = compliance;
   const nearTaxThreshold = c ? c.lifetimeWinningsCents >= c.taxThresholdCents && !c.taxDetailsConfirmed : false;
-  const canWithdraw = c ? c.kycStatus === 'verified' && c.isAdult && !nearTaxThreshold : false;
+  const canWithdraw = c
+    ? c.kycStatus === 'verified' && c.isAdult && !nearTaxThreshold && c.stripeConnectPayoutsEnabled
+    : false;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -188,14 +227,34 @@ export default function WalletScreen() {
       {c && c.kycStatus !== 'verified' && (
         <View style={styles.notice}>
           <Text style={styles.noticeText}>
-            Verify your identity to withdraw. You can play and load funds now; ID verification (name, date of birth, 18+)
-            is required before cashing out.
+            {c.kycStatus === 'rejected'
+              ? "We couldn't verify your last submission. Try again with a clear photo of your ID and a matching selfie."
+              : c.kycStatus === 'pending'
+                ? "Your identity verification is being reviewed - this usually takes a few minutes."
+                : 'Verify your identity to withdraw. You can play and load funds now; ID verification (name, date of birth, 18+) is required before cashing out.'}
           </Text>
+          {c.kycStatus !== 'pending' && (
+            <Pressable style={styles.smallButton} onPress={startIdentityVerification} disabled={busy}>
+              <Text style={styles.buttonText}>Verify identity</Text>
+            </Pressable>
+          )}
         </View>
       )}
       {c && c.kycStatus === 'verified' && !c.isAdult && (
         <View style={styles.notice}>
           <Text style={styles.noticeText}>You must be at least 18 years old to withdraw winnings.</Text>
+        </View>
+      )}
+      {c && c.kycStatus === 'verified' && c.isAdult && !c.stripeConnectPayoutsEnabled && (
+        <View style={styles.notice}>
+          <Text style={styles.noticeText}>
+            {c.stripeConnectLinked
+              ? 'Your payout account is still being verified by Stripe. Finish onboarding or check back shortly.'
+              : 'Link a payout account to withdraw - this is where Stripe sends your cash out.'}
+          </Text>
+          <Pressable style={styles.smallButton} onPress={linkPayoutAccount} disabled={busy}>
+            <Text style={styles.buttonText}>{c.stripeConnectLinked ? 'Continue onboarding' : 'Link payout account'}</Text>
+          </Pressable>
         </View>
       )}
       {nearTaxThreshold && (
