@@ -18,6 +18,7 @@ export default function CompliancePage() {
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [blockedStates, setBlockedStates] = useState('');
   const [allowedStates, setAllowedStates] = useState('');
+  const [geofenceEnabled, setGeofenceEnabled] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [kycFilter, setKycFilter] = useState('pending');
@@ -38,11 +39,13 @@ export default function CompliancePage() {
     const { data: cfg } = await supabase
       .from('platform_config')
       .select('key, value')
-      .in('key', ['blocked_states', 'allowed_states']);
+      .in('key', ['blocked_states', 'allowed_states', 'geofence_enabled']);
     const blocked = cfg?.find((c) => c.key === 'blocked_states')?.value as string[] | undefined;
     const allowed = cfg?.find((c) => c.key === 'allowed_states')?.value as string[] | undefined;
+    const geofence = cfg?.find((c) => c.key === 'geofence_enabled')?.value as boolean | undefined;
     if (blocked) setBlockedStates(blocked.join(', '));
     if (allowed) setAllowedStates(allowed.join(', '));
+    setGeofenceEnabled(geofence ?? true);
   }, []);
 
   const loadKyc = useCallback(async () => {
@@ -110,6 +113,21 @@ export default function CompliancePage() {
     }
   }
 
+  async function toggleGeofence(enabled: boolean) {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const { error } = await supabase.rpc('admin_update_geofence_enabled', { p_enabled: enabled });
+      if (error) throw error;
+      setGeofenceEnabled(enabled);
+      setMessage(enabled ? 'Geofencing turned on.' : 'Geofencing turned off - location is not checked at all until re-enabled.');
+    } catch (err) {
+      setMessage(`Error: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function saveAllowedStates() {
     setBusy(true);
     setMessage(null);
@@ -131,6 +149,28 @@ export default function CompliancePage() {
   return (
     <div>
       <h2>Compliance</h2>
+
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ margin: 0 }}>Geofencing</h3>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={geofenceEnabled}
+              disabled={busy}
+              onChange={(e) => toggleGeofence(e.target.checked)}
+            />
+            {geofenceEnabled ? 'On' : 'Off'}
+          </label>
+        </div>
+        <p style={{ color: '#9a9aa5', fontSize: 13 }}>
+          Master switch. <strong>Off</strong> skips location verification entirely - no state is
+          required or checked, and every player can buy in regardless of region. The allow/deny
+          lists below are only enforced while this is <strong>On</strong>. Leave off only for
+          local/soft-launch testing; turn back on before any real launch per{' '}
+          <code>legal/01-state-restrictions.md</code>.
+        </p>
+      </div>
 
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Allowed states (launch whitelist)</h3>

@@ -16,6 +16,7 @@ import { theme } from '../theme';
 type Status = {
   regionState: string | null;
   regionBlocked: boolean;
+  geofenceEnabled: boolean;
   allowedStates: string[];
 };
 
@@ -29,6 +30,9 @@ export default function RegionGate() {
       setStatus({
         regionState: data.regionState ?? null,
         regionBlocked: Boolean(data.regionBlocked),
+        // Defaults to true (matches the server default) if an older cached
+        // response is ever missing the field.
+        geofenceEnabled: data.geofenceEnabled ?? true,
         allowedStates: (data.allowedStates as string[]) ?? [],
       });
     }
@@ -53,6 +57,10 @@ export default function RegionGate() {
   }
 
   if (!status) return null;
+
+  // Staff has turned geofencing off entirely (Command Center -> Compliance) --
+  // no location declaration needed at all.
+  if (!status.geofenceEnabled) return null;
 
   const allowed = status.allowedStates.length > 0 ? status.allowedStates : ['TX', 'CA'];
   const ok = status.regionState !== null && !status.regionBlocked;
