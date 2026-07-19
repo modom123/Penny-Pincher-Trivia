@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import GamesPage from './pages/GamesPage';
 import QuestionsPage from './pages/QuestionsPage';
 import FinancialsPage from './pages/FinancialsPage';
+import LeaderboardsPage from './pages/LeaderboardsPage';
 import CompliancePage from './pages/CompliancePage';
 import SupportPage from './pages/SupportPage';
 import AnalyticsPage from './pages/AnalyticsPage';
@@ -29,6 +30,7 @@ export default function App() {
               <Route path="/games" element={<GamesPage />} />
               <Route path="/questions" element={<QuestionsPage />} />
               <Route path="/financials" element={<FinancialsPage />} />
+              <Route path="/leaderboards" element={<LeaderboardsPage />} />
               <Route path="/compliance" element={<CompliancePage />} />
               <Route path="/support" element={<SupportPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />

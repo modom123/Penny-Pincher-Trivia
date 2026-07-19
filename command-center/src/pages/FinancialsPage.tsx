@@ -21,8 +21,6 @@ type Game = {
 type Reconciliation = {
   gameId: string;
   status: string;
-  debits: number;
-  bonuses: number;
   expectedPool: number;
   actualPool: number;
   payouts: number;
@@ -61,33 +59,42 @@ export default function FinancialsPage() {
   }, [load]);
 
   // "Ledger Master" reconciliation: for every active/completed game, verify
-  // that total_prize_pool_cents + admin_revenue_pool_cents exactly equals
-  // what players actually paid in (round_debit ledger entries) plus any
-  // platform-funded milestone bonuses - and, for completed games, that the
-  // payouts issued exactly equal the prize pool. Down to the cent, no
-  // estimates - a mismatch here means real money is unaccounted for.
+  // that total_prize_pool_cents + admin_revenue_pool_cents exactly equals the
+  // CASH players actually contributed (entry fees + round costs, cash portion
+  // only) - and, for completed games, that the payouts issued exactly equal
+  // the prize pool. Down to the cent, no estimates - a mismatch here means
+  // real money is unaccounted for.
+  //
+  // Source of truth is player_game_stats.total_cash_spent_cents, NOT
+  // wallet_ledger's round_debit entries: round_debit records the FULL round
+  // cost including any promo/bonus-token-funded portion, but promo-funded
+  // spending contributes nothing to the pool (buy_round only cuts the
+  // cash-funded remainder into prize_cut/admin_cut). Summing round_debit
+  // overstates the expected pool by however much was paid in bonus tokens -
+  // increasingly common now with deposit bonus tokens, Streak Saver's free
+  // rounds, and the "3 the hard way" streak bonus all crediting promo
+  // balance. total_cash_spent_cents already tracks only the cash-funded
+  // portion (both the entry fee and every round's cash_used), so it's exactly
+  // what should sum to total_prize_pool_cents + admin_revenue_pool_cents.
   async function runReconciliation() {
     setReconcileBusy(true);
     try {
       const { data: games } = await supabase.from('games').select('*').in('status', ['active', 'completed']);
-      const { data: debitRows } = await supabase.from('wallet_ledger').select('game_id, amount_cents').eq('entry_type', 'round_debit');
+      const { data: statsRows } = await supabase.from('player_game_stats').select('game_id, total_cash_spent_cents');
       const { data: payoutRows } = await supabase.from('wallet_ledger').select('game_id, amount_cents').eq('entry_type', 'payout');
-      const { data: bonusRows } = await supabase.from('game_bonus_injections').select('game_id, amount_cents');
 
       const sumBy = (rows: { game_id: string | null; amount_cents: number }[] | null, gameId: string) =>
         (rows ?? []).filter((r) => r.game_id === gameId).reduce((sum, r) => sum + Math.abs(r.amount_cents), 0);
+      const sumCashBy = (rows: { game_id: string; total_cash_spent_cents: number }[] | null, gameId: string) =>
+        (rows ?? []).filter((r) => r.game_id === gameId).reduce((sum, r) => sum + r.total_cash_spent_cents, 0);
 
       const results: Reconciliation[] = ((games ?? []) as Game[]).map((g) => {
-        const debits = sumBy(debitRows, g.game_id);
-        const bonuses = sumBy(bonusRows, g.game_id);
+        const expectedPool = sumCashBy(statsRows, g.game_id);
         const payouts = sumBy(payoutRows, g.game_id);
-        const expectedPool = debits + bonuses;
         const actualPool = g.total_prize_pool_cents + g.admin_revenue_pool_cents;
         return {
           gameId: g.game_id,
           status: g.status,
-          debits,
-          bonuses,
           expectedPool,
           actualPool,
           payouts,
@@ -135,7 +142,7 @@ export default function FinancialsPage() {
               <tr>
                 <th>Game</th>
                 <th>Status</th>
-                <th>Debits + Bonuses</th>
+                <th>Cash Contributed</th>
                 <th>Pool + Cut</th>
                 <th>Payouts</th>
                 <th>Result</th>
@@ -167,7 +174,10 @@ export default function FinancialsPage() {
         <select value={filterType} onChange={(e) => setFilterType(e.target.value)} style={{ marginBottom: 12, maxWidth: 220 }}>
           <option value="">All entry types</option>
           <option value="deposit">deposit</option>
+          <option value="bonus_grant">bonus_grant</option>
+          <option value="entry_fee_debit">entry_fee_debit</option>
           <option value="round_debit">round_debit</option>
+          <option value="streak_bonus">streak_bonus</option>
           <option value="payout">payout</option>
           <option value="withdrawal">withdrawal</option>
           <option value="admin_adjustment">admin_adjustment</option>

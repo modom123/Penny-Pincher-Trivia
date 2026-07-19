@@ -6,6 +6,7 @@ const LINKS = [
   { to: '/games', label: 'Games' },
   { to: '/questions', label: 'Question Bank' },
   { to: '/financials', label: 'Financials' },
+  { to: '/leaderboards', label: 'Leaderboards' },
   { to: '/compliance', label: 'Compliance' },
   { to: '/support', label: 'Support' },
   { to: '/analytics', label: 'Analytics' },

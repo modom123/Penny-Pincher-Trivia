@@ -15,6 +15,9 @@ type Game = {
   in_sudden_death: boolean;
   payout_scheme: PayoutScheme;
   round_seconds: number;
+  min_buy_in_tokens: number | null;
+  max_buy_in_tokens: number | null;
+  reup_cutoff_round: number;
   created_at: string;
 };
 
@@ -48,6 +51,9 @@ export default function GamesPage() {
   const [newScheme, setNewScheme] = useState<PayoutScheme>('standard');
   const [newSeconds, setNewSeconds] = useState<number>(12);
   const [autoApprove, setAutoApprove] = useState<boolean>(false);
+  const [newMinBuyIn, setNewMinBuyIn] = useState<string>('');
+  const [newMaxBuyIn, setNewMaxBuyIn] = useState<string>('');
+  const [newReupCutoff, setNewReupCutoff] = useState<number>(30);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState<string | null>(null);
@@ -90,6 +96,9 @@ export default function GamesPage() {
     try {
       const { error } = await supabase.rpc('admin_create_game', {
         p_mode: newMode, p_payout_scheme: newScheme, p_round_seconds: newSeconds, p_auto_approve: autoApprove,
+        p_min_buy_in_tokens: newMinBuyIn === '' ? null : Number(newMinBuyIn),
+        p_max_buy_in_tokens: newMaxBuyIn === '' ? null : Number(newMaxBuyIn),
+        p_reup_cutoff_round: newReupCutoff,
       });
       if (error) throw error;
       setMessage(
@@ -248,6 +257,45 @@ export default function GamesPage() {
             Run automatically (skip review)
           </label>
         </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#9a9aa5' }}>
+            Min buy-in (tokens, blank = none)
+            <input
+              type="number"
+              min={0}
+              placeholder="No minimum"
+              value={newMinBuyIn}
+              onChange={(e) => setNewMinBuyIn(e.target.value)}
+              style={{ width: 160 }}
+            />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#9a9aa5' }}>
+            Max buy-in (tokens, blank = none)
+            <input
+              type="number"
+              min={0}
+              placeholder="No maximum"
+              value={newMaxBuyIn}
+              onChange={(e) => setNewMaxBuyIn(e.target.value)}
+              style={{ width: 160 }}
+            />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#9a9aa5' }}>
+            Re-up cutoff round (1-100)
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={newReupCutoff}
+              onChange={(e) => setNewReupCutoff(Number(e.target.value))}
+              style={{ width: 160 }}
+            />
+          </label>
+        </div>
+        <p style={{ color: '#9a9aa5', fontSize: 12, marginTop: 8, marginBottom: 0 }}>
+          Re-up cutoff: through this round, a player short on tokens gets a top-up prompt instead of being eliminated.
+          Past it, running out ends their game. Defaults to round 30.
+        </p>
         {message && <p style={{ marginTop: 12 }}>{message}</p>}
       </div>
 
@@ -289,6 +337,8 @@ export default function GamesPage() {
               <th>Mode</th>
               <th>Payout</th>
               <th>Timer</th>
+              <th>Buy-in</th>
+              <th>Re-up cutoff</th>
               <th>Status</th>
               <th>Round</th>
               <th>Prize Pool</th>
@@ -304,6 +354,12 @@ export default function GamesPage() {
                 <td>{MODE_LABELS[g.mode]}</td>
                 <td>{SCHEME_LABELS[g.payout_scheme] ?? g.payout_scheme ?? '—'}</td>
                 <td>{g.round_seconds ? `${g.round_seconds}s` : '—'}</td>
+                <td>
+                  {g.min_buy_in_tokens == null && g.max_buy_in_tokens == null
+                    ? '—'
+                    : `${g.min_buy_in_tokens != null ? g.min_buy_in_tokens : '0'}–${g.max_buy_in_tokens != null ? g.max_buy_in_tokens : '∞'}`}
+                </td>
+                <td>{g.reup_cutoff_round ?? 30}</td>
                 <td>
                   {g.status}
                   {g.in_sudden_death && <span className="badge open" style={{ marginLeft: 6 }}>SUDDEN DEATH</span>}
@@ -350,7 +406,7 @@ export default function GamesPage() {
             ))}
             {games.length === 0 && (
               <tr>
-                <td colSpan={10}>No games yet.</td>
+                <td colSpan={12}>No games yet.</td>
               </tr>
             )}
           </tbody>
