@@ -1,17 +1,18 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Alert, ActivityIndicator, ScrollView, TextInput, Platform, Linking } from 'react-native';
+import { View, Text, Image, Pressable, StyleSheet, Alert, ActivityIndicator, ScrollView, TextInput, Platform, Linking } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { theme } from '../theme';
 
 const isWeb = Platform.OS === 'web';
 
+// Same 5 bundles, names, and art as the website's token grid - keep both in sync.
 const BUNDLES = [
-  { id: 'starter', label: '$1.00 -> 100 Tokens' },
-  { id: 'small', label: '$5.00 -> 600 Tokens' },
-  { id: 'medium', label: '$10.00 -> 1400 Tokens' },
-  { id: 'large', label: '$20.00 -> 3000 Tokens' },
-  { id: 'huge', label: '$50.00 -> 7000 Tokens' },
+  { id: 'starter', name: 'The First Dollar', price: '$1.00', tokens: '100 Tokens', bonus: null, art: require('../../assets/tokens/the-first-dollar.png') },
+  { id: 'small', name: "Lincoln's Fiver", price: '$5.00', tokens: '600 Tokens', bonus: '+100 bonus', art: require('../../assets/tokens/lincolns-fiver.png') },
+  { id: 'medium', name: 'Ten Dollar Treasury', price: '$10.00', tokens: '1,400 Tokens', bonus: '+400 bonus', art: require('../../assets/tokens/ten-dollar-treasury.png'), popular: true },
+  { id: 'large', name: "Jackson's Wreath", price: '$20.00', tokens: '3,000 Tokens', bonus: '+1,000 bonus', art: require('../../assets/tokens/jacksons-wreath.png') },
+  { id: 'huge', name: "Grant's Fifty", price: '$50.00', tokens: '7,000 Tokens', bonus: '+2,000 bonus', art: require('../../assets/tokens/grants-fifty.png'), bestValue: true },
 ];
 
 type Compliance = {
@@ -212,8 +213,16 @@ export default function WalletScreen() {
       )}
 
       {BUNDLES.map((bundle) => (
-        <Pressable key={bundle.id} style={styles.button} onPress={() => buyBundle(bundle.id)} disabled={busy}>
-          <Text style={styles.buttonText}>{bundle.label}</Text>
+        <Pressable key={bundle.id} style={styles.bundleCard} onPress={() => buyBundle(bundle.id)} disabled={busy}>
+          {(bundle.popular || bundle.bestValue) && (
+            <Text style={styles.bundleFlag}>{bundle.popular ? 'Most popular' : 'Best value'}</Text>
+          )}
+          <Image source={bundle.art} style={styles.bundleArt} />
+          <View style={styles.bundleInfo}>
+            <Text style={styles.bundleName}>{bundle.name}</Text>
+            <Text style={styles.bundlePrice}>{bundle.price} &rarr; {bundle.tokens}</Text>
+            {bundle.bonus && <Text style={styles.bundleBonus}>{bundle.bonus}</Text>}
+          </View>
         </Pressable>
       ))}
 
@@ -310,6 +319,34 @@ const styles = StyleSheet.create({
   sectionTitle: { color: theme.text, fontSize: 18, fontWeight: '700', marginTop: 24, marginBottom: 8 },
   button: { backgroundColor: theme.surface, borderRadius: 10, paddingVertical: 14, marginBottom: 12 },
   buttonDisabled: { opacity: 0.5 },
+  bundleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.border,
+    padding: 12,
+    marginBottom: 12,
+  },
+  bundleFlag: {
+    position: 'absolute',
+    top: -9,
+    left: 14,
+    backgroundColor: theme.gold,
+    color: theme.bg,
+    fontWeight: '800',
+    fontSize: 10,
+    letterSpacing: 0.5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  bundleArt: { width: 52, height: 52, borderRadius: 26, marginRight: 14 },
+  bundleInfo: { flex: 1 },
+  bundleName: { color: theme.textMuted, fontStyle: 'italic', fontSize: 12 },
+  bundlePrice: { color: theme.text, fontWeight: '800', fontSize: 16, marginTop: 2 },
+  bundleBonus: { color: theme.emerald, fontWeight: '700', fontSize: 12, marginTop: 2 },
   smallButton: { backgroundColor: theme.emerald, borderRadius: 8, paddingVertical: 10, marginTop: 10 },
   devButton: { backgroundColor: theme.gold, borderRadius: 10, paddingVertical: 14, marginTop: 24 },
   buttonText: { color: theme.text, textAlign: 'center', fontWeight: '700', fontSize: 16 },
