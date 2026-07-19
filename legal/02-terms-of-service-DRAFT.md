@@ -59,7 +59,7 @@ instrument. `[COUNSEL: confirm money-transmitter / stored-value characterization
 required licensing or disclosures.]`
 
 4.2. **Bundles and bonus Tokens.** Tokens are sold in bundles; larger bundles include
-promotional bonus Tokens: $1.00 → 100, $5.00 → 600, $10.00 → 1,300, $20.00 → 2,800.
+promotional bonus Tokens: $1.00 → 100, $5.00 → 600, $10.00 → 1,400, $20.00 → 3,000.
 
 4.3. **Two balances.** Your wallet has two separate balances:
 - **Cash Balance** — Tokens funded by your own payment, plus prize winnings. This balance

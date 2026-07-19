@@ -86,9 +86,9 @@ ADMIN_USER_IDS                                             # legacy create-game 
 
 ## ✅ Bonus-token economics — RESOLVED (cash/promo wallet split)
 
-Token bundles grant **bonus tokens** (`$5 → 600`, `$10 → 1,300`, `$20 → 2,800`), and 1
+Token bundles grant **bonus tokens** (`$5 → 600`, `$10 → 1,400`, `$20 → 3,000`), and 1
 token equals 1 cent of in-game / prize-pool value. Left unaddressed this created a cash-out
-arbitrage (buy `$20 → 2,800`, never play, withdraw $28) and a pool-solvency hole (bonus
+arbitrage (buy `$20 → 3,000`, never play, withdraw $30) and a pool-solvency hole (bonus
 tokens inflating the prize pool above real USD collected). **Both are now closed** by the
 cash/promo wallet split (migrations `20260707003220` → `20260707010300`):
 

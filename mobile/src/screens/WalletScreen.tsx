@@ -9,8 +9,8 @@ const isWeb = Platform.OS === 'web';
 const BUNDLES = [
   { id: 'starter', label: '$1.00 -> 100 Tokens' },
   { id: 'small', label: '$5.00 -> 600 Tokens' },
-  { id: 'medium', label: '$10.00 -> 1300 Tokens' },
-  { id: 'large', label: '$20.00 -> 2800 Tokens' },
+  { id: 'medium', label: '$10.00 -> 1400 Tokens' },
+  { id: 'large', label: '$20.00 -> 3000 Tokens' },
   { id: 'huge', label: '$50.00 -> 7000 Tokens' },
 ];
 
