@@ -29,6 +29,7 @@ export default function GameScreen({ route, navigation }: Props) {
   const [prizePoolCents, setPrizePoolCents] = useState(0);
   const [selected, setSelected] = useState<Option | null>(null);
   const [selectedCorrect, setSelectedCorrect] = useState<boolean | null>(null);
+  const [streakBonusCents, setStreakBonusCents] = useState<number | null>(null);
   const [isSpectator, setIsSpectator] = useState(false);
   // Per-round outcome history for the progress tracker: 'correct' | 'incorrect'.
   const [history, setHistory] = useState<Record<number, 'correct' | 'incorrect'>>({});
@@ -93,6 +94,7 @@ export default function GameScreen({ route, navigation }: Props) {
         setPurchased(false);
         setSelected(null);
         setSelectedCorrect(null);
+        setStreakBonusCents(null);
         setStreakFree(false);
         setPhase('open');
         setLastResult(null);
@@ -218,6 +220,7 @@ export default function GameScreen({ route, navigation }: Props) {
     }
     setPhase('answered');
     setSelectedCorrect(Boolean(data.isCorrect));
+    setStreakBonusCents(data.streakBonusCents > 0 ? data.streakBonusCents : null);
     setHistory((h) => ({ ...h, [round.roundNumber]: data.isCorrect ? 'correct' : 'incorrect' }));
   }
 
@@ -321,6 +324,10 @@ export default function GameScreen({ route, navigation }: Props) {
 
       {purchased && streakFree && phase !== 'closed' && (
         <Text style={styles.streakBadge}>FREE — streak bonus! 🔥</Text>
+      )}
+
+      {phase === 'answered' && !!streakBonusCents && (
+        <Text style={styles.streakBadge}>3 the hard way! +{money(streakBonusCents)} bonus credited 🔥</Text>
       )}
 
       {purchased && phase !== 'closed' && (
