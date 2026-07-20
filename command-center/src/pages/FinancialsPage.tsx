@@ -16,7 +16,10 @@ type Game = {
   total_prize_pool_cents: number;
   admin_revenue_pool_cents: number;
   status: string;
+  created_at: string;
 };
+
+type DailyHouseMoney = { date: string; games: number; houseMoneyCents: number };
 
 type Reconciliation = {
   gameId: string;
@@ -31,6 +34,7 @@ type Reconciliation = {
 export default function FinancialsPage() {
   const [ledger, setLedger] = useState<LedgerRow[]>([]);
   const [totals, setTotals] = useState({ prizePools: 0, platformRevenue: 0, gamesCompleted: 0 });
+  const [games, setGames] = useState<Game[]>([]);
   const [filterType, setFilterType] = useState('');
   const [reconciliations, setReconciliations] = useState<Reconciliation[]>([]);
   const [reconcileBusy, setReconcileBusy] = useState(false);
@@ -43,9 +47,10 @@ export default function FinancialsPage() {
       .limit(200);
     if (ledgerData) setLedger(ledgerData as LedgerRow[]);
 
-    const { data: games } = await supabase.from('games').select('*');
-    if (games) {
-      const g = games as Game[];
+    const { data: gameRows } = await supabase.from('games').select('*').order('created_at', { ascending: false });
+    if (gameRows) {
+      const g = gameRows as Game[];
+      setGames(g);
       setTotals({
         prizePools: g.reduce((sum, x) => sum + x.total_prize_pool_cents, 0),
         platformRevenue: g.reduce((sum, x) => sum + x.admin_revenue_pool_cents, 0),
@@ -110,6 +115,29 @@ export default function FinancialsPage() {
 
   const filtered = ledger.filter((row) => !filterType || row.entry_type === filterType);
 
+  // House money = the platform's 40% cut (games.admin_revenue_pool_cents), which
+  // accrues on the game row as rounds are bought. Bucketed by the game's local
+  // creation date - a game runs ~30 min end-to-end, so this is an accurate proxy
+  // for "money taken in that day" even though the cut technically trickles in
+  // round-by-round rather than posting as a single ledger entry.
+  const localDateKey = (iso: string) => {
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const todayKey = localDateKey(new Date().toISOString());
+  const dailyHouseMoney: DailyHouseMoney[] = Array.from(
+    games.reduce((byDate, g) => {
+      const key = localDateKey(g.created_at);
+      const entry = byDate.get(key) ?? { date: key, games: 0, houseMoneyCents: 0 };
+      entry.games += 1;
+      entry.houseMoneyCents += g.admin_revenue_pool_cents;
+      byDate.set(key, entry);
+      return byDate;
+    }, new Map<string, DailyHouseMoney>()).values()
+  ).sort((a, b) => (a.date < b.date ? 1 : -1));
+  const houseMoneyToday = dailyHouseMoney.find((d) => d.date === todayKey)?.houseMoneyCents ?? 0;
+  const houseMoneyAllTime = games.reduce((sum, g) => sum + g.admin_revenue_pool_cents, 0);
+
   return (
     <div>
       <h2>Financials</h2>
@@ -120,13 +148,78 @@ export default function FinancialsPage() {
           <div className="value">${(totals.prizePools / 100).toFixed(2)}</div>
         </div>
         <div className="stat">
-          <div className="label">Platform Revenue (40% cut)</div>
-          <div className="value">${(totals.platformRevenue / 100).toFixed(2)}</div>
+          <div className="label">House Money Today</div>
+          <div className="value">${(houseMoneyToday / 100).toFixed(2)}</div>
+        </div>
+        <div className="stat">
+          <div className="label">House Money — All Games (40% cut)</div>
+          <div className="value">${(houseMoneyAllTime / 100).toFixed(2)}</div>
         </div>
         <div className="stat">
           <div className="label">Games Completed</div>
           <div className="value">{totals.gamesCompleted}</div>
         </div>
+      </div>
+
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>House money by day</h3>
+        <p style={{ color: '#9a9aa5', fontSize: 13, marginTop: 0 }}>
+          The platform's 40% cut, grouped by the day each game was created.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Games</th>
+              <th>House Money</th>
+            </tr>
+          </thead>
+          <tbody>
+            {dailyHouseMoney.slice(0, 30).map((d) => (
+              <tr key={d.date}>
+                <td>{d.date}{d.date === todayKey ? ' (today)' : ''}</td>
+                <td>{d.games}</td>
+                <td>${(d.houseMoneyCents / 100).toFixed(2)}</td>
+              </tr>
+            ))}
+            {dailyHouseMoney.length === 0 && (
+              <tr>
+                <td colSpan={3}>No games yet.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>House money by game</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Game</th>
+              <th>Created</th>
+              <th>Status</th>
+              <th>Prize Pool</th>
+              <th>House Money</th>
+            </tr>
+          </thead>
+          <tbody>
+            {games.slice(0, 50).map((g) => (
+              <tr key={g.game_id}>
+                <td>{g.game_id.slice(0, 8)}...</td>
+                <td>{new Date(g.created_at).toLocaleString()}</td>
+                <td>{g.status}</td>
+                <td>${(g.total_prize_pool_cents / 100).toFixed(2)}</td>
+                <td>${(g.admin_revenue_pool_cents / 100).toFixed(2)}</td>
+              </tr>
+            ))}
+            {games.length === 0 && (
+              <tr>
+                <td colSpan={5}>No games yet.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
       <div className="card">

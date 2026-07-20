@@ -242,6 +242,26 @@ export default function GamesPage() {
           Pick a game type and a payout scheme. New games are created as a <b>draft</b> — nothing
           runs or takes money until you <b>Approve</b> it below — or tick <b>Run automatically</b> to skip review.
         </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 14 }}>
+          <div style={{ background: '#1c1c24', borderRadius: 10, padding: '10px 12px', fontSize: 13 }}>
+            <b>Flat-Rate Escalator</b>
+            <p style={{ color: '#9a9aa5', margin: '4px 0 0' }}>Round N costs N cents. Same total spend for everyone who reaches the end.</p>
+          </div>
+          <div style={{ background: '#1c1c24', borderRadius: 10, padding: '10px 12px', fontSize: 13 }}>
+            <b>Streak Saver</b>
+            <p style={{ color: '#9a9aa5', margin: '4px 0 0' }}>A correct answer waives the next round's fee entirely; a wrong one resumes normal pricing.</p>
+          </div>
+          <div style={{ background: '#1c1c24', borderRadius: 10, padding: '10px 12px', fontSize: 13 }}>
+            <b>Milestone Booster</b>
+            <p style={{ color: '#9a9aa5', margin: '4px 0 0' }}>Flat per-tier pricing: Bronze 1-25 = 10¢ · Silver 26-50 = 25¢ · Gold 51-75 = 50¢ · Platinum 76-100 = $1.</p>
+          </div>
+        </div>
+        <p style={{ color: '#9a9aa5', fontSize: 13, marginTop: 0, background: '#1c1c24', borderRadius: 10, padding: '10px 12px' }}>
+          🔥 <b>3 the hard way</b> (all modes, always on): once a player answers 3 rounds in a row correctly, every
+          correct answer after that credits the round's cost right back to their balance (as bonus tokens) for as
+          long as the streak holds — one wrong answer resets it. This is separate from Streak Saver's free-round
+          waiver and stacks with it. Shows up in the ledger as <code>streak_bonus</code> (Financials page).
+        </p>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <select value={newMode} onChange={(e) => setNewMode(e.target.value as GameMode)} style={{ maxWidth: 240 }}>
             {(Object.keys(MODE_LABELS) as GameMode[]).map((m) => (

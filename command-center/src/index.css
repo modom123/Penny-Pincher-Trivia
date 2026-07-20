@@ -73,3 +73,4 @@ input, select, textarea {
 .badge.open { background: #f59e0b33; color: #f59e0b; }
 .badge.resolved { background: #22c55e33; color: #22c55e; }
 .badge.in_progress { background: #3b82f633; color: #3b82f6; }
+.badge.retired { background: #9a9aa533; color: #9a9aa5; }

@@ -35,6 +35,7 @@ type SubjectCoverage = {
   pending_count: number;
   rejected_count: number;
   grade_levels_covered: number;
+  is_active: boolean;
 };
 
 const emptyForm = {
@@ -66,6 +67,12 @@ export default function QuestionsPage() {
   const [genMessage, setGenMessage] = useState<string | null>(null);
   const [coverage, setCoverage] = useState<SubjectCoverage[]>([]);
   const [coverageFilter, setCoverageFilter] = useState('');
+  const [newSubjectName, setNewSubjectName] = useState('');
+  const [newSubjectDomain, setNewSubjectDomain] = useState('');
+  const [newSubjectDescription, setNewSubjectDescription] = useState('');
+  const [subjectBusy, setSubjectBusy] = useState(false);
+  const [subjectMessage, setSubjectMessage] = useState<string | null>(null);
+  const [showRetired, setShowRetired] = useState(false);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -89,6 +96,42 @@ export default function QuestionsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  async function createSubject(e: React.FormEvent) {
+    e.preventDefault();
+    setSubjectBusy(true);
+    setSubjectMessage(null);
+    try {
+      const { data, error } = await supabase.rpc('admin_create_subject', {
+        p_name: newSubjectName,
+        p_domain: newSubjectDomain,
+        p_description: newSubjectDescription || null,
+      });
+      if (error) throw error;
+      setSubjectMessage(`Added "${data.name}" (${data.domain}). It'll show up in the coverage table below with 0/${data.target_question_count} - generate or add questions for it next.`);
+      setNewSubjectName('');
+      setNewSubjectDescription('');
+      await load();
+    } catch (err) {
+      setSubjectMessage(`Error: ${(err as Error).message}`);
+    } finally {
+      setSubjectBusy(false);
+    }
+  }
+
+  async function setSubjectActive(subjectId: string, isActive: boolean) {
+    setSubjectBusy(true);
+    setSubjectMessage(null);
+    try {
+      const { error } = await supabase.rpc('admin_set_subject_active', { p_subject_id: subjectId, p_is_active: isActive });
+      if (error) throw error;
+      await load();
+    } catch (err) {
+      setSubjectMessage(`Error: ${(err as Error).message}`);
+    } finally {
+      setSubjectBusy(false);
+    }
+  }
 
   // "Trivia Alchemist": requests AI-drafted questions for staff review. Never
   // writes to the live question bank directly - see promote/reject below.
@@ -207,9 +250,12 @@ export default function QuestionsPage() {
   );
 
   const readyCount = coverage.filter((c) => c.grade_levels_covered >= 20).length;
-  const coverageShown = coverage.filter(
-    (c) => !coverageFilter || c.name.toLowerCase().includes(coverageFilter.toLowerCase()) || c.domain.toLowerCase().includes(coverageFilter.toLowerCase())
-  );
+  const knownDomains = Array.from(new Set(coverage.map((c) => c.domain))).sort();
+  const coverageShown = coverage
+    .filter((c) => showRetired || c.is_active)
+    .filter(
+      (c) => !coverageFilter || c.name.toLowerCase().includes(coverageFilter.toLowerCase()) || c.domain.toLowerCase().includes(coverageFilter.toLowerCase())
+    );
 
   return (
     <div>
@@ -222,12 +268,18 @@ export default function QuestionsPage() {
           20 grade levels have questions. <strong>{readyCount}</strong> of <strong>{coverage.length}</strong> subjects
           ready.
         </p>
-        <input
-          placeholder="Filter subjects by name or domain"
-          value={coverageFilter}
-          onChange={(e) => setCoverageFilter(e.target.value)}
-          style={{ marginBottom: 12 }}
-        />
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+          <input
+            placeholder="Filter subjects by name or domain"
+            value={coverageFilter}
+            onChange={(e) => setCoverageFilter(e.target.value)}
+            style={{ flex: 1, minWidth: 220, marginBottom: 0 }}
+          />
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#cbd5f5', whiteSpace: 'nowrap' }}>
+            <input type="checkbox" checked={showRetired} onChange={(e) => setShowRetired(e.target.checked)} />
+            Show retired
+          </label>
+        </div>
         <table>
           <thead>
             <tr>
@@ -236,6 +288,7 @@ export default function QuestionsPage() {
               <th>Approved / Target</th>
               <th>Grades</th>
               <th>Pending</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -243,8 +296,11 @@ export default function QuestionsPage() {
               const pct = Math.min(100, Math.round((c.approved_count / c.target_question_count) * 100));
               const ready = c.grade_levels_covered >= 20;
               return (
-                <tr key={c.subject_id}>
-                  <td>{c.name}</td>
+                <tr key={c.subject_id} style={{ opacity: c.is_active ? 1 : 0.5 }}>
+                  <td>
+                    {c.name}
+                    {!c.is_active && <span className="badge retired" style={{ marginLeft: 6 }}>RETIRED</span>}
+                  </td>
                   <td style={{ color: '#9a9aa5' }}>{c.domain}</td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -258,12 +314,58 @@ export default function QuestionsPage() {
                   </td>
                   <td style={{ color: ready ? '#12E29A' : '#9a9aa5' }}>{c.grade_levels_covered}/20</td>
                   <td>{c.pending_count}</td>
+                  <td>
+                    <button className="secondary" disabled={subjectBusy} onClick={() => setSubjectActive(c.subject_id, !c.is_active)}>
+                      {c.is_active ? 'Retire' : 'Restore'}
+                    </button>
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
         {coverage.length === 0 && <p style={{ color: '#9a9aa5' }}>No subjects seeded yet. Run the subjects seed migration.</p>}
+      </div>
+
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>Add a subject</h3>
+        <p style={{ color: '#9a9aa5', fontSize: 13, marginTop: 0 }}>
+          Adds a new subject to the taxonomy immediately (no code deploy needed). It shows up below at 0/1000 -
+          generate drafts with Trivia Alchemist or add questions manually to build it out.
+        </p>
+        <form onSubmit={createSubject}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+            <input
+              placeholder="Subject name (e.g. Ancient Rome)"
+              value={newSubjectName}
+              onChange={(e) => setNewSubjectName(e.target.value)}
+              required
+            />
+            <input
+              placeholder="Domain (e.g. World History)"
+              value={newSubjectDomain}
+              onChange={(e) => setNewSubjectDomain(e.target.value)}
+              list="known-domains"
+              required
+            />
+            <datalist id="known-domains">
+              {knownDomains.map((d) => (
+                <option key={d} value={d} />
+              ))}
+            </datalist>
+          </div>
+          <div style={{ marginBottom: 10 }}>
+            <input
+              placeholder="Description (optional)"
+              value={newSubjectDescription}
+              onChange={(e) => setNewSubjectDescription(e.target.value)}
+            />
+          </div>
+          <button type="submit" disabled={subjectBusy || !newSubjectName || !newSubjectDomain}>
+            + Add subject
+          </button>
+          {subjectMessage && <p style={{ marginTop: 12 }}>{subjectMessage}</p>}
+        </form>
       </div>
 
       <div className="card">
