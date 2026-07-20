@@ -129,10 +129,15 @@ export default function LobbyScreen() {
             <Text style={styles.poolValue}>{money(item.total_prize_pool_cents)}</Text>
           </View>
           <View style={styles.roundBox}>
-            {isRegistration ? (
+            {isRegistration && item.scheduled_start_at ? (
               <>
                 <Text style={styles.roundLabelSm}>STARTS IN</Text>
                 <Text style={styles.countdown}>{formatCountdown(item.scheduled_start_at, nowMs)}</Text>
+              </>
+            ) : isRegistration ? (
+              <>
+                <Text style={styles.roundLabelSm}>WAITING FOR PLAYERS</Text>
+                <Text style={styles.countdown}>{item.player_count}/{item.min_players}</Text>
               </>
             ) : (
               <Text style={styles.roundText}>

@@ -18,6 +18,8 @@ type Game = {
   min_buy_in_tokens: number | null;
   max_buy_in_tokens: number | null;
   reup_cutoff_round: number;
+  min_players: number;
+  scheduled_start_at: string | null;
   created_at: string;
 };
 
@@ -54,15 +56,24 @@ export default function GamesPage() {
   const [newMinBuyIn, setNewMinBuyIn] = useState<string>('');
   const [newMaxBuyIn, setNewMaxBuyIn] = useState<string>('');
   const [newReupCutoff, setNewReupCutoff] = useState<number>(30);
+  const [newMinPlayers, setNewMinPlayers] = useState<number>(3);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState<string | null>(null);
   const [readySubjects, setReadySubjects] = useState<ReadySubject[]>([]);
   const [contestSubject, setContestSubject] = useState('');
+  const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.from('games').select('*').order('created_at', { ascending: false });
     if (!error && data) setGames(data as Game[]);
+
+    const { data: statsRows } = await supabase.from('player_game_stats').select('game_id');
+    const counts: Record<string, number> = {};
+    (statsRows ?? []).forEach((r: { game_id: string }) => {
+      counts[r.game_id] = (counts[r.game_id] ?? 0) + 1;
+    });
+    setPlayerCounts(counts);
 
     const { data: subs } = await supabase.rpc('subjects_ready_for_contest');
     if (subs) setReadySubjects(subs as ReadySubject[]);
@@ -99,12 +110,13 @@ export default function GamesPage() {
         p_min_buy_in_tokens: newMinBuyIn === '' ? null : Number(newMinBuyIn),
         p_max_buy_in_tokens: newMaxBuyIn === '' ? null : Number(newMaxBuyIn),
         p_reup_cutoff_round: newReupCutoff,
+        p_min_players: newMinPlayers,
       });
       if (error) throw error;
       setMessage(
         autoApprove
-          ? `Game created & queued to run automatically (${MODE_LABELS[newMode]} · ${SCHEME_LABELS[newScheme]} · ${newSeconds}s/question).`
-          : `Draft created (${MODE_LABELS[newMode]} · ${SCHEME_LABELS[newScheme]} · ${newSeconds}s/question). Review it below, then Approve to go live.`
+          ? `Game created and open for sign-ups (${MODE_LABELS[newMode]} · ${SCHEME_LABELS[newScheme]} · ${newSeconds}s/question). It won't start until ${newMinPlayers} players have joined, then a 24h countdown begins.`
+          : `Draft created (${MODE_LABELS[newMode]} · ${SCHEME_LABELS[newScheme]} · ${newSeconds}s/question). Review it below, then Approve to open it for sign-ups.`
       );
       await load();
     } catch (err) {
@@ -129,14 +141,17 @@ export default function GamesPage() {
     }
   }
 
-  async function rejectGame(gameId: string) {
-    if (!confirm('Reject this draft game? It will be cancelled and never run.')) return;
+  async function rejectGame(gameId: string, isRegistration: boolean) {
+    const confirmMsg = isRegistration
+      ? 'Cancel this game? Any players already signed up will be refunded their entry fee in cash, and the game will never run.'
+      : 'Reject this draft game? It will be cancelled and never run.';
+    if (!confirm(confirmMsg)) return;
     setBusy(true);
     setMessage(null);
     try {
       const { error } = await supabase.rpc('admin_cancel_game', { p_game_id: gameId });
       if (error) throw error;
-      setMessage('Draft rejected (cancelled).');
+      setMessage(isRegistration ? 'Game cancelled and any registered players refunded.' : 'Draft rejected (cancelled).');
       await load();
     } catch (err) {
       setMessage(`Error: ${(err as Error).message}`);
@@ -291,10 +306,21 @@ export default function GamesPage() {
               style={{ width: 160 }}
             />
           </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#9a9aa5' }}>
+            Min players to start
+            <input
+              type="number"
+              min={1}
+              value={newMinPlayers}
+              onChange={(e) => setNewMinPlayers(Number(e.target.value))}
+              style={{ width: 160 }}
+            />
+          </label>
         </div>
         <p style={{ color: '#9a9aa5', fontSize: 12, marginTop: 8, marginBottom: 0 }}>
           Re-up cutoff: through this round, a player short on tokens gets a top-up prompt instead of being eliminated.
-          Past it, running out ends their game. Defaults to round 30.
+          Past it, running out ends their game. Defaults to round 30. Min players: the game sits open for sign-ups and
+          won't run until this many players have joined - a 24h countdown to launch starts the moment it's reached.
         </p>
         {message && <p style={{ marginTop: 12 }}>{message}</p>}
       </div>
@@ -339,6 +365,8 @@ export default function GamesPage() {
               <th>Timer</th>
               <th>Buy-in</th>
               <th>Re-up cutoff</th>
+              <th>Players</th>
+              <th>Starts</th>
               <th>Status</th>
               <th>Round</th>
               <th>Prize Pool</th>
@@ -360,6 +388,14 @@ export default function GamesPage() {
                     : `${g.min_buy_in_tokens != null ? g.min_buy_in_tokens : '0'}–${g.max_buy_in_tokens != null ? g.max_buy_in_tokens : '∞'}`}
                 </td>
                 <td>{g.reup_cutoff_round ?? 30}</td>
+                <td>{playerCounts[g.game_id] ?? 0} / {g.min_players ?? 3}</td>
+                <td>
+                  {g.status !== 'registration'
+                    ? '—'
+                    : g.scheduled_start_at
+                      ? new Date(g.scheduled_start_at).toLocaleString()
+                      : 'Waiting for players'}
+                </td>
                 <td>
                   {g.status}
                   {g.in_sudden_death && <span className="badge open" style={{ marginLeft: 6 }}>SUDDEN DEATH</span>}
@@ -374,12 +410,17 @@ export default function GamesPage() {
                   {g.status === 'draft' && (
                     <>
                       <button onClick={() => approveGame(g.game_id)} disabled={busy}>
-                        ✓ Approve &amp; go live
+                        ✓ Approve &amp; open for sign-ups
                       </button>
-                      <button className="secondary" onClick={() => rejectGame(g.game_id)} disabled={busy}>
+                      <button className="secondary" onClick={() => rejectGame(g.game_id, false)} disabled={busy}>
                         Reject
                       </button>
                     </>
+                  )}
+                  {g.status === 'registration' && (
+                    <button className="secondary" onClick={() => rejectGame(g.game_id, true)} disabled={busy}>
+                      Cancel
+                    </button>
                   )}
                   {g.status === 'active' && g.current_round >= g.total_rounds && !g.in_sudden_death && (
                     <button className="secondary" onClick={() => forcePayout(g.game_id)} disabled={busy}>
@@ -406,7 +447,7 @@ export default function GamesPage() {
             ))}
             {games.length === 0 && (
               <tr>
-                <td colSpan={12}>No games yet.</td>
+                <td colSpan={14}>No games yet.</td>
               </tr>
             )}
           </tbody>
