@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, Image, ScrollView, Pressable, StyleSheet, RefreshControl, Modal, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, Image, ScrollView, Pressable, StyleSheet, RefreshControl, Modal, TextInput, ActivityIndicator, Share, Platform } from 'react-native';
 import { useFocusEffect, useNavigation, type CompositeNavigationProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -69,6 +69,12 @@ type ActivityItem = {
   created_at: string;
 };
 
+type ReferralStatus = {
+  referralCode: string | null;
+  rewardPerReferralCents: number;
+  totalReferred: number;
+};
+
 function activityText(item: ActivityItem): string {
   const modeLabel = MODE_META[item.mode]?.label ?? item.mode;
   switch (item.kind) {
@@ -112,6 +118,7 @@ export default function LobbyScreen() {
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [suggestText, setSuggestText] = useState('');
   const [suggestBusy, setSuggestBusy] = useState(false);
+  const [referral, setReferral] = useState<ReferralStatus | null>(null);
 
   // Genuine presence count - only real, currently-connected players (never a
   // fabricated number, which would be misleading on a real-money product).
@@ -135,16 +142,18 @@ export default function LobbyScreen() {
 
   const load = useCallback(async () => {
     setRefreshing(true);
-    const [{ data: gameData }, { data: comp }, { data: activityData }] = await Promise.all([
+    const [{ data: gameData }, { data: comp }, { data: activityData }, { data: referralData }] = await Promise.all([
       supabase.rpc('list_lobby_games'),
       supabase.rpc('my_compliance_status'),
       supabase.rpc('list_recent_activity', { p_limit: 20 }),
+      supabase.rpc('my_referral_status'),
     ]);
     const gamesTyped = (gameData as unknown as Game[]) ?? [];
     setGames(gamesTyped);
     if (comp && typeof comp.walletBalanceCents === 'number') setBalanceCents(comp.walletBalanceCents);
     if (comp && typeof comp.username === 'string') setUsername(comp.username);
     if (activityData) setActivity(activityData as ActivityItem[]);
+    if (referralData) setReferral(referralData as ReferralStatus);
 
     // Who's signed up / playing - only for games worth showing a roster for.
     const rosterGames = gamesTyped.filter((g) => g.status === 'registration' || g.status === 'active');
@@ -175,6 +184,23 @@ export default function LobbyScreen() {
       showAlert('Could not submit', (err as Error).message);
     } finally {
       setSuggestBusy(false);
+    }
+  }
+
+  async function shareReferral() {
+    if (!referral?.referralCode) return;
+    const message = `Join me on Penny Pinching Trivia! Use my code ${referral.referralCode} and we both earn ${money(
+      referral.rewardPerReferralCents
+    )} in tokens once you play. 🧠💸`;
+    try {
+      if (Platform.OS === 'web') {
+        await navigator.clipboard?.writeText(message);
+        showAlert('Copied!', 'Your invite message is on your clipboard - paste it anywhere.');
+      } else {
+        await Share.share({ message });
+      }
+    } catch {
+      // user cancelled the share sheet - nothing to do
     }
   }
 
@@ -331,19 +357,12 @@ export default function LobbyScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Brand lockup - same mark + two-tone wordmark as the website header,
-          so the Lobby (the first screen after sign-in) still reads as
-          Penny Pinching Trivia instead of a generic games list. */}
-      <View style={styles.brandRow}>
-        <Image source={require('../../assets/favicon.png')} style={styles.brandMark} resizeMode="contain" />
-        <Text style={styles.brandWordmark}>
-          <Text style={styles.brandPenny}>Penny</Text>
-          <Text style={styles.brandPinch}>Pinching</Text>
-        </Text>
-      </View>
+      {/* Brand lockup: the real Penny Pinching Trivia logo, so the Lobby (the
+          first screen after sign-in) reads as the app, not a generic games list. */}
+      <Image source={require('../../assets/logo.png')} style={styles.brandLogo} resizeMode="contain" />
 
       {/* Top bar: avatar, unified Penny Wallet balance + quick deposit. Leaderboard,
-          full Wallet, Refer & Earn, and sign out live in the bottom tab bar now. */}
+          full Wallet, Refer & Earn, and sign out live in the bottom tab bar too. */}
       <View style={styles.topBar}>
         <Avatar name={username || '?'} size={36} />
         <Pressable style={styles.walletPill} onPress={() => navigation.navigate('Wallet')}>
@@ -356,7 +375,7 @@ export default function LobbyScreen() {
 
       <View style={styles.headingRow}>
         <View style={styles.headingLeft}>
-          <Text style={styles.heading}>Games</Text>
+          <Text style={styles.heading}>Lobby</Text>
           {onlineCount > 0 && (
             <View style={styles.onlinePill}>
               <View style={styles.onlineDot} />
@@ -389,6 +408,22 @@ export default function LobbyScreen() {
         refreshControl={<RefreshControl tintColor={theme.emerald} refreshing={refreshing} onRefresh={load} />}
       >
         {games.length === 0 && <Text style={styles.empty}>No games right now. Pull to refresh.</Text>}
+
+        {referral?.referralCode && (
+          <Pressable style={styles.referCard} onPress={() => navigation.navigate('Refer')}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.referTitle}>🎁 Refer & Earn</Text>
+              <Text style={styles.referSub}>
+                Share code <Text style={styles.referCode}>{referral.referralCode}</Text> - you both get{' '}
+                {money(referral.rewardPerReferralCents)} when they play.
+                {referral.totalReferred > 0 ? ` ${referral.totalReferred} referred so far.` : ''}
+              </Text>
+            </View>
+            <Pressable style={styles.referShareBtn} onPress={shareReferral}>
+              <Text style={styles.referShareBtnText}>Share</Text>
+            </Pressable>
+          </Pressable>
+        )}
 
         {myGames.length > 0 && (
           <>
@@ -450,11 +485,7 @@ export default function LobbyScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 56, backgroundColor: theme.bg },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
-  brandMark: { width: 22, height: 22, borderRadius: 6 },
-  brandWordmark: { fontSize: 15, fontWeight: '800', letterSpacing: 0.2 },
-  brandPenny: { color: theme.pink },
-  brandPinch: { color: theme.gold, marginLeft: 2 },
+  brandLogo: { width: 148, height: 80, alignSelf: 'center', marginBottom: 4 },
   topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, gap: 12 },
   walletPill: {
     flex: 1,
@@ -571,6 +602,23 @@ const styles = StyleSheet.create({
   rosterAvatars: { flexDirection: 'row', marginRight: 8 },
   rosterAvatarWrap: { borderWidth: 2, borderColor: theme.surface, borderRadius: 15 },
   rosterNames: { color: theme.textMuted, fontSize: 12, fontWeight: '600', flex: 1 },
+
+  referCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: theme.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.gold,
+    padding: 16,
+    marginBottom: 16,
+  },
+  referTitle: { color: theme.text, fontWeight: '900', fontSize: 15, marginBottom: 4 },
+  referSub: { color: theme.textMuted, fontSize: 12, lineHeight: 17 },
+  referCode: { color: theme.gold, fontWeight: '900' },
+  referShareBtn: { backgroundColor: theme.gold, borderRadius: 999, paddingVertical: 10, paddingHorizontal: 16 },
+  referShareBtnText: { color: theme.bg, fontWeight: '900', fontSize: 13 },
 
   winnersRow: { marginTop: 4, marginBottom: 16 },
   winnerChip: {
