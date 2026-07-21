@@ -121,7 +121,7 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  let body: { maxSubjects?: number; targetPerGrade?: number; perCall?: number; maxCalls?: number } = {};
+  let body: { maxSubjects?: number; targetPerGrade?: number; perCall?: number; maxCalls?: number; ignoreBudget?: boolean } = {};
   try {
     body = await req.json();
   } catch {
@@ -130,10 +130,48 @@ Deno.serve(async (req: Request) => {
   const maxSubjects = Math.min(Math.max(body.maxSubjects ?? 5, 1), 20);
   const targetPerGrade = Math.min(Math.max(body.targetPerGrade ?? 5, 1), 50);
   const perCall = Math.min(Math.max(body.perCall ?? 10, 1), 20);
-  const maxCalls = Math.min(Math.max(body.maxCalls ?? 8, 1), 20);
+  const requestedMaxCalls = Math.min(Math.max(body.maxCalls ?? 8, 1), 20);
   const model = Deno.env.get("ANTHROPIC_MODEL") || "claude-sonnet-4-5-20250929";
 
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+  // The automatic schedule is always funded by real tournament revenue (see
+  // fund_content_budget_on_completion) - it never spends more than the house
+  // has actually earned toward content generation. A staff member running
+  // this manually can consciously override that with ignoreBudget=true (e.g.
+  // to seed a brand-new topic before any tournament has funded it yet); the
+  // cron path can never set this, regardless of what's in its request body.
+  const ignoreBudget = !isCron && body.ignoreBudget === true;
+  let maxCalls = requestedMaxCalls;
+  let budgetCentsAtStart = 0;
+  let estCostCentsPerCall = 10;
+
+  if (!ignoreBudget) {
+    const { data: budgetRow } = await admin.from("platform_config").select("value").eq("key", "content_budget_cents").maybeSingle();
+    const { data: costRow } = await admin
+      .from("platform_config")
+      .select("value")
+      .eq("key", "content_budget_est_cost_cents_per_call")
+      .maybeSingle();
+    budgetCentsAtStart = Number(budgetRow?.value ?? 0);
+    estCostCentsPerCall = Math.max(Number(costRow?.value ?? 10), 1);
+    const affordableCalls = Math.floor(budgetCentsAtStart / estCostCentsPerCall);
+    maxCalls = Math.min(requestedMaxCalls, affordableCalls);
+
+    if (maxCalls <= 0) {
+      return new Response(
+        JSON.stringify({
+          subjectsProcessed: 0,
+          callsMade: 0,
+          drafted: 0,
+          perSubjectResults: [],
+          errors: [],
+          skippedReason: `No content budget available (balance ${budgetCentsAtStart}c, needs ${estCostCentsPerCall}c/call). Waiting for a completed tournament to fund it, or run manually with ignoreBudget.`,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }
 
   const { data: candidateSubjects, error: subjErr } = await admin
     .from("subjects")
@@ -211,8 +249,14 @@ Deno.serve(async (req: Request) => {
     subjectsProcessed++;
   }
 
+  let budgetCentsRemaining: number | null = null;
+  if (!ignoreBudget && callsMade > 0) {
+    const { data: newBalance } = await admin.rpc("debit_content_budget", { p_cents: callsMade * estCostCentsPerCall });
+    budgetCentsRemaining = typeof newBalance === "number" ? newBalance : null;
+  }
+
   return new Response(
-    JSON.stringify({ subjectsProcessed, callsMade, drafted, perSubjectResults, errors }),
+    JSON.stringify({ subjectsProcessed, callsMade, drafted, perSubjectResults, errors, budgetCentsRemaining }),
     { status: 200, headers: { "Content-Type": "application/json" } }
   );
 });

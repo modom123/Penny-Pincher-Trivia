@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 type Question = {
@@ -23,6 +23,13 @@ type QuestionDraft = {
   status: string;
   generated_by: string;
   created_at: string;
+};
+
+type ContentBudget = {
+  budgetCents: number;
+  skimBps: number;
+  estCostCentsPerCall: number;
+  affordableCalls: number;
 };
 
 type TopicSuggestion = {
@@ -78,6 +85,13 @@ export default function QuestionsPage() {
   const [suggestionBusy, setSuggestionBusy] = useState<string | null>(null);
   const [autoCurateBusy, setAutoCurateBusy] = useState(false);
   const [autoCurateMessage, setAutoCurateMessage] = useState<string | null>(null);
+  const [ignoreBudget, setIgnoreBudget] = useState(false);
+  const [budget, setBudget] = useState<ContentBudget | null>(null);
+  const [skimPct, setSkimPct] = useState('10');
+  const [estCostCents, setEstCostCents] = useState('10');
+  const [budgetSettingsBusy, setBudgetSettingsBusy] = useState(false);
+  const [budgetSettingsMessage, setBudgetSettingsMessage] = useState<string | null>(null);
+  const budgetFormInitialized = useRef(false);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -103,6 +117,17 @@ export default function QuestionsPage() {
       .eq('status', 'new')
       .order('created_at', { ascending: false });
     if (sugg) setSuggestions(sugg as TopicSuggestion[]);
+
+    const { data: budgetData } = await supabase.rpc('content_budget_status');
+    if (budgetData) {
+      const b = budgetData as ContentBudget;
+      setBudget(b);
+      if (!budgetFormInitialized.current) {
+        setSkimPct(String(b.skimBps / 100));
+        setEstCostCents(String(b.estCostCentsPerCall));
+        budgetFormInitialized.current = true;
+      }
+    }
   }, []);
 
   async function setSuggestionStatus(id: string, status: 'reviewed' | 'dismissed') {
@@ -149,20 +174,45 @@ export default function QuestionsPage() {
     setAutoCurateMessage(null);
     try {
       const { data, error } = await supabase.functions.invoke('auto-curate-questions', {
-        body: { maxSubjects: 5, targetPerGrade: 5 },
+        body: { maxSubjects: 5, targetPerGrade: 5, ignoreBudget },
       });
       if (error) throw error;
-      const summary = (data.perSubjectResults as { slug: string; drafted: number }[])
-        .map((r) => `${r.slug} +${r.drafted}`)
-        .join(', ');
-      setAutoCurateMessage(
-        `Checked ${data.subjectsProcessed} subject(s), drafted ${data.drafted} question(s)${summary ? ` (${summary})` : ''}. Review below.`
-      );
+      if (data.skippedReason) {
+        setAutoCurateMessage(data.skippedReason);
+      } else {
+        const summary = (data.perSubjectResults as { slug: string; drafted: number }[])
+          .map((r) => `${r.slug} +${r.drafted}`)
+          .join(', ');
+        setAutoCurateMessage(
+          `Checked ${data.subjectsProcessed} subject(s), drafted ${data.drafted} question(s)${summary ? ` (${summary})` : ''}. Review below.`
+        );
+      }
       await load();
     } catch (err) {
       setAutoCurateMessage(`Error: ${(err as Error).message}`);
     } finally {
       setAutoCurateBusy(false);
+    }
+  }
+
+  async function saveBudgetSettings() {
+    setBudgetSettingsBusy(true);
+    setBudgetSettingsMessage(null);
+    try {
+      const skimBps = Math.round(Number(skimPct) * 100);
+      const estCost = Math.round(Number(estCostCents));
+      if (!Number.isFinite(skimBps) || !Number.isFinite(estCost)) throw new Error('Enter valid numbers');
+      const { error } = await supabase.rpc('admin_update_content_budget_settings', {
+        p_skim_bps: skimBps,
+        p_est_cost_cents_per_call: estCost,
+      });
+      if (error) throw error;
+      setBudgetSettingsMessage('Saved.');
+      await load();
+    } catch (err) {
+      setBudgetSettingsMessage(`Error: ${(err as Error).message}`);
+    } finally {
+      setBudgetSettingsBusy(false);
     }
   }
 
@@ -459,9 +509,48 @@ export default function QuestionsPage() {
           every 30 minutes via a scheduled job; "Run now" just triggers an extra pass (a handful of subjects per run,
           so it stays fast and bounded).
         </p>
-        <button onClick={runAutoCurate} disabled={autoCurateBusy}>
-          {autoCurateBusy ? 'Curating...' : '🤖 Run now'}
-        </button>
+        <p style={{ color: '#9a9aa5', fontSize: 13 }}>
+          <b>Self-funded by tournament revenue:</b> a slice of each completed game's house cut tops up a content
+          budget, and the scheduled runs only spend what's actually been earned - no tournaments played yet means no
+          automatic spend yet.
+        </p>
+        {budget && (
+          <div className="stat-grid" style={{ marginBottom: 16 }}>
+            <div className="stat">
+              <div className="label">Content budget</div>
+              <div className="value">${(budget.budgetCents / 100).toFixed(2)}</div>
+            </div>
+            <div className="stat">
+              <div className="label">Affordable runs left</div>
+              <div className="value">{budget.affordableCalls}</div>
+            </div>
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#9a9aa5' }}>
+            Skim % of house revenue per completed game
+            <input type="number" min={0} max={100} step={0.1} value={skimPct} onChange={(e) => setSkimPct(e.target.value)} style={{ width: 140 }} />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#9a9aa5' }}>
+            Est. cost per generation call (cents)
+            <input type="number" min={1} value={estCostCents} onChange={(e) => setEstCostCents(e.target.value)} style={{ width: 140 }} />
+          </label>
+          <button className="secondary" onClick={saveBudgetSettings} disabled={budgetSettingsBusy} style={{ alignSelf: 'flex-end' }}>
+            {budgetSettingsBusy ? 'Saving...' : 'Save settings'}
+          </button>
+        </div>
+        {budgetSettingsMessage && <p style={{ marginTop: 0, marginBottom: 12 }}>{budgetSettingsMessage}</p>}
+
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#cbd5f5', marginBottom: 10 }}>
+          <input type="checkbox" checked={ignoreBudget} onChange={(e) => setIgnoreBudget(e.target.checked)} />
+          Ignore content budget for this run (bills your normal Anthropic account right away - use to seed a brand-new
+          topic before any tournament has funded it)
+        </label>
+        <div>
+          <button onClick={runAutoCurate} disabled={autoCurateBusy}>
+            {autoCurateBusy ? 'Curating...' : '🤖 Run now'}
+          </button>
+        </div>
         {autoCurateMessage && <p style={{ marginTop: 12 }}>{autoCurateMessage}</p>}
       </div>
 
