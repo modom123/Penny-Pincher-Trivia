@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, RefreshControl, ScrollView, Share, Platform } from 'react-native';
+import { View, Text, Pressable, StyleSheet, RefreshControl, ScrollView } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
-import { showAlert } from '../lib/alert';
 import { useAuth } from '../contexts/AuthContext';
+import { inviteViaEmail, inviteViaSms, inviteViaMore } from '../lib/referral';
 import { theme, money } from '../theme';
 
 type ReferralStatus = {
@@ -33,21 +33,12 @@ export default function ReferEarnScreen() {
     }, [load])
   );
 
-  async function shareCode() {
+  function invite(via: 'email' | 'sms' | 'more') {
     if (!status?.referralCode) return;
-    const message = `Join me on Penny Pinching Trivia! Use my code ${status.referralCode} and we both earn ${money(
-      status.rewardPerReferralCents
-    )} in tokens once you play. 🧠💸`;
-    try {
-      if (Platform.OS === 'web') {
-        await navigator.clipboard?.writeText(message);
-        showAlert('Copied!', 'Your invite message is on your clipboard - paste it anywhere.');
-      } else {
-        await Share.share({ message });
-      }
-    } catch {
-      // user cancelled the share sheet - nothing to do
-    }
+    const args: [string, number] = [status.referralCode, status.rewardPerReferralCents];
+    if (via === 'email') inviteViaEmail(...args);
+    else if (via === 'sms') inviteViaSms(...args);
+    else inviteViaMore(...args);
   }
 
   return (
@@ -65,9 +56,17 @@ export default function ReferEarnScreen() {
       <View style={styles.codeCard}>
         <Text style={styles.codeLabel}>YOUR CODE</Text>
         <Text style={styles.code}>{status?.referralCode ?? '—'}</Text>
-        <Pressable style={styles.shareBtn} onPress={shareCode} disabled={!status?.referralCode}>
-          <Text style={styles.shareBtnText}>Share invite</Text>
-        </Pressable>
+        <View style={styles.inviteBtnRow}>
+          <Pressable style={styles.inviteBtn} onPress={() => invite('email')} disabled={!status?.referralCode}>
+            <Text style={styles.inviteBtnText}>📧 Email</Text>
+          </Pressable>
+          <Pressable style={styles.inviteBtn} onPress={() => invite('sms')} disabled={!status?.referralCode}>
+            <Text style={styles.inviteBtnText}>💬 Text</Text>
+          </Pressable>
+          <Pressable style={styles.inviteBtn} onPress={() => invite('more')} disabled={!status?.referralCode}>
+            <Text style={styles.inviteBtnText}>↗️ More</Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.statRow}>
@@ -107,8 +106,15 @@ const styles = StyleSheet.create({
   },
   codeLabel: { color: theme.textMuted, fontSize: 11, fontWeight: '800', letterSpacing: 1.5, marginBottom: 6 },
   code: { color: theme.gold, fontSize: 32, fontWeight: '900', letterSpacing: 2, marginBottom: 16 },
-  shareBtn: { backgroundColor: theme.emerald, borderRadius: 999, paddingVertical: 12, paddingHorizontal: 28 },
-  shareBtnText: { color: theme.bg, fontWeight: '900', fontSize: 15 },
+  inviteBtnRow: { flexDirection: 'row', gap: 8, width: '100%' },
+  inviteBtn: {
+    flex: 1,
+    backgroundColor: theme.emerald,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  inviteBtnText: { color: theme.bg, fontWeight: '900', fontSize: 13 },
   statRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
   statCard: {
     flex: 1,

@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, Image, ScrollView, Pressable, StyleSheet, RefreshControl, Modal, TextInput, ActivityIndicator, Share, Platform } from 'react-native';
+import { View, Text, Image, ScrollView, Pressable, StyleSheet, RefreshControl, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { useFocusEffect, useNavigation, type CompositeNavigationProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { supabase } from '../lib/supabase';
 import { showAlert } from '../lib/alert';
+import { inviteViaEmail, inviteViaSms, inviteViaMore } from '../lib/referral';
 import { useAuth } from '../contexts/AuthContext';
 import { theme, money } from '../theme';
 import RegionGate from '../components/RegionGate';
@@ -187,21 +188,12 @@ export default function LobbyScreen() {
     }
   }
 
-  async function shareReferral() {
+  function inviteFriend(via: 'email' | 'sms' | 'more') {
     if (!referral?.referralCode) return;
-    const message = `Join me on Penny Pinching Trivia! Use my code ${referral.referralCode} and we both earn ${money(
-      referral.rewardPerReferralCents
-    )} in tokens once you play. 🧠💸`;
-    try {
-      if (Platform.OS === 'web') {
-        await navigator.clipboard?.writeText(message);
-        showAlert('Copied!', 'Your invite message is on your clipboard - paste it anywhere.');
-      } else {
-        await Share.share({ message });
-      }
-    } catch {
-      // user cancelled the share sheet - nothing to do
-    }
+    const args: [string, number] = [referral.referralCode, referral.rewardPerReferralCents];
+    if (via === 'email') inviteViaEmail(...args);
+    else if (via === 'sms') inviteViaSms(...args);
+    else inviteViaMore(...args);
   }
 
   useFocusEffect(
@@ -410,19 +402,27 @@ export default function LobbyScreen() {
         {games.length === 0 && <Text style={styles.empty}>No games right now. Pull to refresh.</Text>}
 
         {referral?.referralCode && (
-          <Pressable style={styles.referCard} onPress={() => navigation.navigate('Refer')}>
-            <View style={{ flex: 1 }}>
+          <View style={styles.referCard}>
+            <Pressable onPress={() => navigation.navigate('Refer')}>
               <Text style={styles.referTitle}>🎁 Refer & Earn</Text>
               <Text style={styles.referSub}>
                 Share code <Text style={styles.referCode}>{referral.referralCode}</Text> - you both get{' '}
                 {money(referral.rewardPerReferralCents)} when they play.
                 {referral.totalReferred > 0 ? ` ${referral.totalReferred} referred so far.` : ''}
               </Text>
-            </View>
-            <Pressable style={styles.referShareBtn} onPress={shareReferral}>
-              <Text style={styles.referShareBtnText}>Share</Text>
             </Pressable>
-          </Pressable>
+            <View style={styles.referBtnRow}>
+              <Pressable style={styles.referBtn} onPress={() => inviteFriend('email')}>
+                <Text style={styles.referBtnText}>📧 Email</Text>
+              </Pressable>
+              <Pressable style={styles.referBtn} onPress={() => inviteFriend('sms')}>
+                <Text style={styles.referBtnText}>💬 Text</Text>
+              </Pressable>
+              <Pressable style={styles.referBtn} onPress={() => inviteFriend('more')}>
+                <Text style={styles.referBtnText}>↗️ More</Text>
+              </Pressable>
+            </View>
+          </View>
         )}
 
         {myGames.length > 0 && (
@@ -604,9 +604,6 @@ const styles = StyleSheet.create({
   rosterNames: { color: theme.textMuted, fontSize: 12, fontWeight: '600', flex: 1 },
 
   referCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
     backgroundColor: theme.surface,
     borderRadius: 16,
     borderWidth: 1,
@@ -614,11 +611,18 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
   },
+  referBtnRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  referBtn: {
+    flex: 1,
+    backgroundColor: theme.surfaceAlt,
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  referBtnText: { color: theme.text, fontWeight: '800', fontSize: 13 },
   referTitle: { color: theme.text, fontWeight: '900', fontSize: 15, marginBottom: 4 },
   referSub: { color: theme.textMuted, fontSize: 12, lineHeight: 17 },
   referCode: { color: theme.gold, fontWeight: '900' },
-  referShareBtn: { backgroundColor: theme.gold, borderRadius: 999, paddingVertical: 10, paddingHorizontal: 16 },
-  referShareBtnText: { color: theme.bg, fontWeight: '900', fontSize: 13 },
 
   winnersRow: { marginTop: 4, marginBottom: 16 },
   winnerChip: {
