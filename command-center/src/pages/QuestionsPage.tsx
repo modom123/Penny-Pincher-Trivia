@@ -76,6 +76,8 @@ export default function QuestionsPage() {
   const [coverageFilter, setCoverageFilter] = useState('');
   const [suggestions, setSuggestions] = useState<TopicSuggestion[]>([]);
   const [suggestionBusy, setSuggestionBusy] = useState<string | null>(null);
+  const [autoCurateBusy, setAutoCurateBusy] = useState(false);
+  const [autoCurateMessage, setAutoCurateMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -134,6 +136,33 @@ export default function QuestionsPage() {
       setGenMessage(`Error: ${(err as Error).message}`);
     } finally {
       setGenBusy(false);
+    }
+  }
+
+  // Same drafting engine as Trivia Alchemist above, but scans the whole
+  // subject taxonomy for shortfalls instead of one category at a time - this
+  // also runs automatically every 30 minutes via a scheduled cron job.
+  // "Run now" just fires an extra pass on demand; both write to the same
+  // pending_review queue below, so nothing here skips human review.
+  async function runAutoCurate() {
+    setAutoCurateBusy(true);
+    setAutoCurateMessage(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-curate-questions', {
+        body: { maxSubjects: 5, targetPerGrade: 5 },
+      });
+      if (error) throw error;
+      const summary = (data.perSubjectResults as { slug: string; drafted: number }[])
+        .map((r) => `${r.slug} +${r.drafted}`)
+        .join(', ');
+      setAutoCurateMessage(
+        `Checked ${data.subjectsProcessed} subject(s), drafted ${data.drafted} question(s)${summary ? ` (${summary})` : ''}. Review below.`
+      );
+      await load();
+    } catch (err) {
+      setAutoCurateMessage(`Error: ${(err as Error).message}`);
+    } finally {
+      setAutoCurateBusy(false);
     }
   }
 
@@ -420,6 +449,20 @@ export default function QuestionsPage() {
           )}
           {message && <p style={{ marginTop: 12 }}>{message}</p>}
         </form>
+      </div>
+
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>Auto-Curate (whole taxonomy)</h3>
+        <p style={{ color: '#9a9aa5', fontSize: 13 }}>
+          Automatically scans every subject for shortfalls and drafts questions for whichever ones need them most -
+          same review queue as Trivia Alchemist below, nothing goes live without approval. This also runs on its own
+          every 30 minutes via a scheduled job; "Run now" just triggers an extra pass (a handful of subjects per run,
+          so it stays fast and bounded).
+        </p>
+        <button onClick={runAutoCurate} disabled={autoCurateBusy}>
+          {autoCurateBusy ? 'Curating...' : '🤖 Run now'}
+        </button>
+        {autoCurateMessage && <p style={{ marginTop: 12 }}>{autoCurateMessage}</p>}
       </div>
 
       <div className="card">
