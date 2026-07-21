@@ -6,6 +6,7 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { supabase } from '../lib/supabase';
 import { showAlert } from '../lib/alert';
 import { inviteViaEmail, inviteViaSms, inviteViaMore } from '../lib/referral';
+import { registerForPushNotificationsAsync } from '../lib/notifications';
 import { useAuth } from '../contexts/AuthContext';
 import { theme, money } from '../theme';
 import RegionGate from '../components/RegionGate';
@@ -120,6 +121,13 @@ export default function LobbyScreen() {
   const [suggestText, setSuggestText] = useState('');
   const [suggestBusy, setSuggestBusy] = useState(false);
   const [referral, setReferral] = useState<ReferralStatus | null>(null);
+
+  // Registers this device for "tournament starting soon" push alerts (4h and
+  // 30min before scheduled_start_at). Once per app launch is plenty - the
+  // token rarely changes, and the RPC is a cheap no-op if it hasn't.
+  useEffect(() => {
+    registerForPushNotificationsAsync();
+  }, []);
 
   // Genuine presence count - only real, currently-connected players (never a
   // fabricated number, which would be misleading on a real-money product).
