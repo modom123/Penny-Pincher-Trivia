@@ -52,6 +52,25 @@ type SubjectCoverage = {
   grade_levels_covered: number;
 };
 
+function OptionsPreview({ options, correct }: { options: Record<string, string>; correct: string }) {
+  return (
+    <div style={{ display: 'grid', gap: 2, fontSize: 12.5, minWidth: 200 }}>
+      {(['A', 'B', 'C', 'D'] as const).map((letter) => (
+        <div
+          key={letter}
+          style={{
+            color: letter === correct ? '#12E29A' : '#9a9aa5',
+            fontWeight: letter === correct ? 700 : 400,
+          }}
+        >
+          {letter === correct ? '✓ ' : `${letter}) `}
+          {options?.[letter] ?? ''}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const emptyForm = {
   question_id: null as string | null,
   question_text: '',
@@ -576,7 +595,7 @@ export default function QuestionsPage() {
               <tr>
                 <th>Round</th>
                 <th>Question</th>
-                <th>Correct</th>
+                <th>Answer options</th>
                 <th>Category</th>
                 <th></th>
               </tr>
@@ -591,7 +610,9 @@ export default function QuestionsPage() {
                     )}
                     {d.question_text}
                   </td>
-                  <td>{d.correct_option}</td>
+                  <td>
+                    <OptionsPreview options={d.options} correct={d.correct_option} />
+                  </td>
                   <td>{d.category}</td>
                   <td style={{ display: 'flex', gap: 6 }}>
                     <button onClick={() => promoteDraft(d.id)} disabled={busy}>
@@ -615,7 +636,7 @@ export default function QuestionsPage() {
             <tr>
               <th>Round</th>
               <th>Question</th>
-              <th>Correct</th>
+              <th>Answer options</th>
               <th>Category</th>
               <th></th>
             </tr>
@@ -630,7 +651,9 @@ export default function QuestionsPage() {
                   )}
                   {q.question_text}
                 </td>
-                <td>{q.correct_option}</td>
+                <td>
+                  <OptionsPreview options={q.options} correct={q.correct_option} />
+                </td>
                 <td>{q.category}</td>
                 <td>
                   <button className="secondary" onClick={() => editQuestion(q)}>
