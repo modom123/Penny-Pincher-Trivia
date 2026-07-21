@@ -252,12 +252,14 @@ export default function GamesPage() {
             <p style={{ color: '#9a9aa5', margin: '4px 0 0' }}>A correct answer waives the next round's fee entirely; a wrong one resumes normal pricing.</p>
           </div>
           <div style={{ background: '#1c1c24', borderRadius: 10, padding: '10px 12px', fontSize: 13 }}>
-            <b>Milestone Booster</b>
+            <b>Milestone Booster — "Treasure Hunt"</b>
             <p style={{ color: '#9a9aa5', margin: '4px 0 0' }}>
-              Same round N = N¢ pricing as the Escalator, but every 10th round (10, 20…100) is a <b>bonus question</b>:
-              answer it right and that round's cost is credited straight back as bonus balance; answer it wrong and
-              the same amount is clawed back out of existing bonus balance only — never real cash, wallet never goes
-              negative.
+              Same round N = N¢ pricing as the Escalator. Every 10th round (10, 20…90) is a <b>clue</b>: answer it
+              right and it earns an escalating multiplier on that round's cost (round 20 = 2× its 20¢ cost = 40¢,
+              round 90 = 9× its 90¢ cost = $8.10) — but nothing is credited yet. Round 100 is the <b>final answer</b>:
+              answer it right and every clue collected is paid out in one lump sum as bonus balance (up to $28.50 if
+              all 9 are collected); answer it wrong and the treasure is lost — no payout, even for clues already
+              earned. Missing an earlier clue round just costs that clue, no clawback.
             </p>
           </div>
         </div>
@@ -265,8 +267,8 @@ export default function GamesPage() {
           🔥 <b>3 the hard way</b> (all modes, always on): once a player answers 3 rounds in a row correctly, every
           correct answer after that credits the round's cost right back to their balance (as bonus tokens) for as
           long as the streak holds — one wrong answer resets it. This is separate from Streak Saver's free-round
-          waiver and Milestone Booster's bonus rounds, and stacks with both. Shows up in the ledger as{' '}
-          <code>streak_bonus</code> (Financials page); Milestone Booster's bonus rounds show up as{' '}
+          waiver and Milestone Booster's Treasure Hunt, and stacks with both. Shows up in the ledger as{' '}
+          <code>streak_bonus</code> (Financials page); Milestone Booster's treasure payout shows up as{' '}
           <code>milestone_bonus</code>.
         </p>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>

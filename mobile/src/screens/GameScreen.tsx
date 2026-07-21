@@ -30,7 +30,14 @@ export default function GameScreen({ route, navigation }: Props) {
   const [selected, setSelected] = useState<Option | null>(null);
   const [selectedCorrect, setSelectedCorrect] = useState<boolean | null>(null);
   const [streakBonusCents, setStreakBonusCents] = useState<number | null>(null);
+  // Milestone Booster "Treasure Hunt": milestoneClueCents is the informational value of
+  // a clue just earned at rounds 10-90 (nothing credited yet); milestoneBonusCents is
+  // only ever nonzero at round 100 - the lump sum actually credited when the treasure
+  // chest opens (correct answer on the final round).
+  const [milestoneClueCents, setMilestoneClueCents] = useState<number | null>(null);
   const [milestoneBonusCents, setMilestoneBonusCents] = useState<number | null>(null);
+  const [treasureLost, setTreasureLost] = useState(false);
+  const [isMilestoneBooster, setIsMilestoneBooster] = useState(false);
   const [isSpectator, setIsSpectator] = useState(false);
   // Per-round outcome history for the progress tracker: 'correct' | 'incorrect'.
   const [history, setHistory] = useState<Record<number, 'correct' | 'incorrect'>>({});
@@ -96,7 +103,9 @@ export default function GameScreen({ route, navigation }: Props) {
         setSelected(null);
         setSelectedCorrect(null);
         setStreakBonusCents(null);
+        setMilestoneClueCents(null);
         setMilestoneBonusCents(null);
+        setTreasureLost(false);
         setStreakFree(false);
         setPhase('open');
         setLastResult(null);
@@ -145,10 +154,11 @@ export default function GameScreen({ route, navigation }: Props) {
   async function fetchPool() {
     const { data } = await supabase
       .from('games')
-      .select('total_prize_pool_cents')
+      .select('total_prize_pool_cents, mode')
       .eq('game_id', gameId)
       .single();
     if (data && typeof data.total_prize_pool_cents === 'number') updatePool(data.total_prize_pool_cents);
+    if (data?.mode) setIsMilestoneBooster(data.mode === 'milestone_booster');
   }
 
   function updatePool(next: number) {
@@ -223,7 +233,9 @@ export default function GameScreen({ route, navigation }: Props) {
     setPhase('answered');
     setSelectedCorrect(Boolean(data.isCorrect));
     setStreakBonusCents(data.streakBonusCents > 0 ? data.streakBonusCents : null);
-    setMilestoneBonusCents(data.milestoneBonusCents ? data.milestoneBonusCents : null);
+    setMilestoneClueCents(data.milestoneClueCents > 0 ? data.milestoneClueCents : null);
+    setMilestoneBonusCents(data.milestoneBonusCents > 0 ? data.milestoneBonusCents : null);
+    setTreasureLost(isMilestoneBooster && round.roundNumber === 100 && !data.isCorrect);
     setHistory((h) => ({ ...h, [round.roundNumber]: data.isCorrect ? 'correct' : 'incorrect' }));
   }
 
@@ -333,11 +345,15 @@ export default function GameScreen({ route, navigation }: Props) {
         <Text style={styles.streakBadge}>3 the hard way! +{money(streakBonusCents)} bonus credited 🔥</Text>
       )}
 
-      {phase === 'answered' && !!milestoneBonusCents && milestoneBonusCents > 0 && (
-        <Text style={styles.streakBadge}>Bonus round! +{money(milestoneBonusCents)} credited back 🎯</Text>
+      {/* Treasure Hunt (Milestone Booster): rounds 10-90 earn clues, round 100 opens the chest. */}
+      {phase === 'answered' && !!milestoneClueCents && (
+        <Text style={styles.streakBadge}>🗺️ Clue found! +{money(milestoneClueCents)} added to the treasure pot</Text>
       )}
-      {phase === 'answered' && !!milestoneBonusCents && milestoneBonusCents < 0 && (
-        <Text style={styles.penaltyBadge}>Bonus round missed — -{money(-milestoneBonusCents)} bonus balance clawed back</Text>
+      {phase === 'answered' && !!milestoneBonusCents && (
+        <Text style={styles.streakBadge}>💰 Treasure chest opened! +{money(milestoneBonusCents)} credited</Text>
+      )}
+      {phase === 'answered' && treasureLost && (
+        <Text style={styles.penaltyBadge}>🏴‍☠️ Final answer missed — the treasure is lost</Text>
       )}
 
       {purchased && phase !== 'closed' && (

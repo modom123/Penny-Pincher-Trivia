@@ -31,7 +31,7 @@ type Game = {
 const MODE_META: Record<GameMode, { label: string; tag: string }> = {
   original_escalator: { label: 'The Escalator', tag: 'Round N costs N¢' },
   streak_saver: { label: 'Streak Saver', tag: 'Play free with a streak' },
-  milestone_booster: { label: 'Milestone Booster', tag: 'Round N¢ + bonus every 10th round' },
+  milestone_booster: { label: 'Milestone Booster', tag: 'Treasure Hunt: collect clues, cash in at Round 100' },
 };
 
 // "2d 04h 12m" / "03:59" style countdown to a target ISO timestamp.

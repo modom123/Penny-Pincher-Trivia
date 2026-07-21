@@ -93,17 +93,22 @@ Set at game creation (`games.mode` enum), same underlying engine for all three:
 - **Streak Saver** - a correct answer waives the *next* round's entry fee entirely;
   a wrong answer resumes normal pricing. Average spend is lower, but "play free if
   you're right" is a stronger virality hook.
-- **Milestone Booster** - same per-round pricing as the Escalator (round *N* costs *N*
-  cents), but every 10th round (10, 20, … 100) is a **bonus question**: answer it
-  correctly and that round's cost is credited straight back as non-withdrawable bonus
-  tokens; answer it incorrectly and the same amount is clawed back out of the player's
-  *existing* bonus-token balance only (`least(cost, promo_balance)`) - never real cash,
-  wallet never goes negative. See `20260721000000_milestone_booster_bonus_rounds.sql`.
+- **Milestone Booster ("Treasure Hunt")** - same per-round pricing as the Escalator
+  (round *N* costs *N* cents). Every 10th round from round 10 through round 90 is a
+  **clue**: answer it correctly and it earns an escalating multiplier of that round's
+  own cost (multiplier = round ÷ 10, so round 20 = 2× its 20¢ cost = 40¢, round 90 = 9×
+  its 90¢ cost = $8.10) - nothing is credited yet. Round 100 is the **final answer**:
+  answer it correctly and every clue collected during the game is paid out in one lump
+  sum as non-withdrawable bonus tokens (up to $28.50 if all 9 are collected); answer it
+  incorrectly and the whole collected total is forfeited - no payout at all. Missing a
+  clue round (10-90) just forfeits that one clue, no other penalty. See
+  `20260721010000_milestone_booster_treasure_hunt.sql` (supersedes the simpler
+  per-round credit/clawback in `20260721000000_milestone_booster_bonus_rounds.sql`).
   The prize pool is funded **solely by player entry fees** (60/40), the same as the
-  other modes; the bonus-round credit/clawback never touches it. An earlier design added
+  other modes; the Treasure Hunt payout never touches it. An earlier design added
   a platform-funded $5 bonus at rounds 25/50/75; that was **removed** (migration
   `20260709000000_milestone_booster_drop_platform_bonus.sql`) because a platform-funded
-  prize could raise its own sweepstakes-classification question - the bonus-round
+  prize could raise its own sweepstakes-classification question - the Treasure Hunt
   mechanic here is deliberately structured like the "3 the hard way" streak bonus (see
   Wallet section below) to stay on the safe side of that line: player-funded
   bonus-token movement only, never platform cash.

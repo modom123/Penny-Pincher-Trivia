@@ -39,22 +39,30 @@ monetization model, without a definitive answer to this question per target stat
   confirm whether average-spend estimates need to be disclosed to players, and whether
   this variable-cost structure changes the AMOE analysis above.]`
 
-### Game 3: Milestone Booster
+### Game 3: Milestone Booster ("Treasure Hunt")
 - Entry cost: same per-round pricing as Game 1 (Round *N* costs $0.01 × *N*).
-- Every 10th round (10, 20, ... 100) is a **bonus question**: a correct answer credits
-  that round's cost back to the player's balance as non-withdrawable bonus tokens; an
-  incorrect answer claws the same amount back out of the player's *existing* bonus-token
-  balance only - never withdrawable cash, and never more than the player currently holds
-  in bonus tokens.
+- Every 10th round from Round 10 through Round 90 is a **clue**: a correct answer earns
+  a clue worth an escalating multiplier of that round's own cost (multiplier = round ÷
+  10 - Round 20 = 2× its $0.20 cost = $0.40, Round 90 = 9× its $0.90 cost = $8.10).
+  Nothing is credited to the player's balance when a clue is earned.
+- Round 100 is the **final answer**: a correct answer credits every clue collected
+  during the game to the player's balance in one lump sum, as non-withdrawable bonus
+  tokens (up to $28.50 if all 9 clues were collected). An incorrect answer on Round 100
+  forfeits the entire collected total - no payout at all, regardless of how many clues
+  were earned. Missing a clue round (10-90) simply forfeits that one clue, no other
+  penalty.
 - Prize pool is funded **solely by player entry fees** (60% pool / 40% platform fee),
-  identical to the other two modes. The bonus-round credit/clawback never adds to or
-  draws from the prize pool - there is **no** platform-funded prize injection.
+  identical to the other two modes. The Treasure Hunt payout never adds to or draws
+  from the prize pool - there is **no** platform-funded prize injection.
   `[HISTORY: an earlier design injected a platform-funded "guaranteed bonus" into the pot
   at rounds 25/50/75. That was removed because a platform-funded prize - as opposed to
   one funded purely by entry fees - could raise its own sweepstakes/AMOE classification
-  question. The bonus-round mechanic added here is deliberately structured the same way
-  as the "3 the Hard Way" streak bonus below: player-funded bonus-token movement only,
-  never platform-funded cash, to stay on the same side of that line.]`
+  question. The Treasure Hunt mechanic added here is deliberately structured the same
+  way as the "3 the Hard Way" streak bonus below: player-funded bonus-token movement
+  only, never platform-funded cash, to stay on the same side of that line. [OPS: the
+  $28.50 maximum collected-clue total is a meaningfully large bonus-token payout
+  relative to the $50.50 max cash cost of playing all 100 rounds - confirm this ratio
+  is intentional before launch.]]`
 
 ### Sudden Death Overtime (applies to all three modes)
 - Triggered only if two or more players are tied for a top-3 finishing position at
