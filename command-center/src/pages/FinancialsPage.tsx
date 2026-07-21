@@ -28,12 +28,15 @@ type Reconciliation = {
   payoutMatches: boolean;
 };
 
+type ClientLookup = { client_number: number; username: string };
+
 export default function FinancialsPage() {
   const [ledger, setLedger] = useState<LedgerRow[]>([]);
   const [totals, setTotals] = useState({ prizePools: 0, platformRevenue: 0, gamesCompleted: 0 });
   const [filterType, setFilterType] = useState('');
   const [reconciliations, setReconciliations] = useState<Reconciliation[]>([]);
   const [reconcileBusy, setReconcileBusy] = useState(false);
+  const [clientsById, setClientsById] = useState<Record<string, ClientLookup>>({});
 
   const load = useCallback(async () => {
     const { data: ledgerData } = await supabase
@@ -51,6 +54,16 @@ export default function FinancialsPage() {
         platformRevenue: g.reduce((sum, x) => sum + x.admin_revenue_pool_cents, 0),
         gamesCompleted: g.filter((x) => x.status === 'completed').length,
       });
+    }
+
+    // So the ledger below can show "#1002 alice" instead of a raw UUID.
+    const { data: clients } = await supabase.rpc('list_clients', { p_search: null });
+    if (clients) {
+      const map: Record<string, ClientLookup> = {};
+      for (const c of clients as { user_id: string; client_number: number; username: string }[]) {
+        map[c.user_id] = { client_number: c.client_number, username: c.username };
+      }
+      setClientsById(map);
     }
   }, []);
 
@@ -200,7 +213,11 @@ export default function FinancialsPage() {
                 <td style={{ color: row.amount_cents >= 0 ? '#22c55e' : '#ef4444' }}>
                   {row.amount_cents >= 0 ? '+' : ''}${(row.amount_cents / 100).toFixed(2)}
                 </td>
-                <td>{row.user_id.slice(0, 8)}...</td>
+                <td>
+                  {clientsById[row.user_id]
+                    ? `#${clientsById[row.user_id].client_number} ${clientsById[row.user_id].username}`
+                    : `${row.user_id.slice(0, 8)}...`}
+                </td>
                 <td>{row.stripe_ref ?? (row.game_id ? `game ${row.game_id.slice(0, 8)}...` : '-')}</td>
               </tr>
             ))}

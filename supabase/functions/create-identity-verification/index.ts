@@ -36,12 +36,20 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("client_number")
+    .eq("user_id", user.id)
+    .single();
+  const clientNumber = profile?.client_number != null ? String(profile.client_number) : "";
+
   const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
   const appUrl = Deno.env.get("APP_PUBLIC_URL") ?? "https://example.com";
 
   const session = await stripe.identity.verificationSessions.create({
     type: "document",
-    metadata: { userId: user.id },
+    metadata: { userId: user.id, clientNumber },
     options: { document: { require_matching_selfie: true } },
     return_url: `${appUrl}/wallet/identity-return`,
   });

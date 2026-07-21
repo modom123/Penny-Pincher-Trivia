@@ -40,9 +40,10 @@ Deno.serve(async (req: Request) => {
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const { data: profile } = await admin
     .from("profiles")
-    .select("stripe_connect_account_id")
+    .select("stripe_connect_account_id, client_number")
     .eq("user_id", user.id)
     .single();
+  const clientNumber = profile?.client_number != null ? String(profile.client_number) : "";
 
   const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
 
@@ -52,6 +53,7 @@ Deno.serve(async (req: Request) => {
       type: "express",
       email: user.email,
       capabilities: { transfers: { requested: true } },
+      metadata: { userId: user.id, clientNumber },
     });
     accountId = account.id;
     await admin.from("profiles").update({ stripe_connect_account_id: accountId }).eq("user_id", user.id);

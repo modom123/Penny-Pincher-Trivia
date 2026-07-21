@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 const LINKS = [
   { to: '/games', label: 'Games' },
+  { to: '/clients', label: 'Clients' },
   { to: '/questions', label: 'Question Bank' },
   { to: '/financials', label: 'Financials' },
   { to: '/leaderboards', label: 'Leaderboards' },

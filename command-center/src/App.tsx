@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import GamesPage from './pages/GamesPage';
+import ClientsPage from './pages/ClientsPage';
 import QuestionsPage from './pages/QuestionsPage';
 import FinancialsPage from './pages/FinancialsPage';
 import LeaderboardsPage from './pages/LeaderboardsPage';
@@ -28,6 +29,7 @@ export default function App() {
             <Route element={<Layout />}>
               <Route index element={<Navigate to="/games" replace />} />
               <Route path="/games" element={<GamesPage />} />
+              <Route path="/clients" element={<ClientsPage />} />
               <Route path="/questions" element={<QuestionsPage />} />
               <Route path="/financials" element={<FinancialsPage />} />
               <Route path="/leaderboards" element={<LeaderboardsPage />} />

@@ -69,15 +69,23 @@ Deno.serve(async (req: Request) => {
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const { data: profile } = await admin
     .from("profiles")
-    .select("stripe_customer_id")
+    .select("stripe_customer_id, client_number, username")
     .eq("user_id", user.id)
     .single();
+  const clientNumber = profile?.client_number != null ? String(profile.client_number) : "";
 
   const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
 
   let customerId = profile?.stripe_customer_id ?? undefined;
   if (!customerId) {
-    const customer = await stripe.customers.create({ email: user.email });
+    // clientNumber on the Customer itself (not just the Checkout Session) so
+    // it shows up on every future charge/invoice for this player in Stripe's
+    // own dashboard, not just this one purchase.
+    const customer = await stripe.customers.create({
+      email: user.email,
+      name: profile?.username,
+      metadata: { userId: user.id, clientNumber },
+    });
     customerId = customer.id;
     await admin.from("profiles").update({ stripe_customer_id: customerId }).eq("user_id", user.id);
   }
@@ -98,6 +106,7 @@ Deno.serve(async (req: Request) => {
     ],
     metadata: {
       userId: user.id,
+      clientNumber,
       bundleId: body.bundleId!,
       tokens: String(bundle.tokens),
       priceCents: String(bundle.price_cents),
