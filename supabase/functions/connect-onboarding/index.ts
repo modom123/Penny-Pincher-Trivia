@@ -56,27 +56,37 @@ Deno.serve(async (req: Request) => {
 
   const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
 
-  let accountId = profile?.stripe_connect_account_id ?? undefined;
-  if (!accountId) {
-    const account = await stripe.accounts.create({
-      type: "express",
-      email: user.email,
-      capabilities: { transfers: { requested: true } },
-      metadata: { userId: user.id, clientNumber },
+  try {
+    let accountId = profile?.stripe_connect_account_id ?? undefined;
+    if (!accountId) {
+      const account = await stripe.accounts.create({
+        type: "express",
+        email: user.email,
+        capabilities: { transfers: { requested: true } },
+        metadata: { userId: user.id, clientNumber },
+      });
+      accountId = account.id;
+      await admin.from("profiles").update({ stripe_connect_account_id: accountId }).eq("user_id", user.id);
+    }
+
+    const appUrl = Deno.env.get("APP_PUBLIC_URL") ?? "https://example.com";
+    const accountLink = await stripe.accountLinks.create({
+      account: accountId,
+      refresh_url: `${appUrl}/wallet/connect-refresh`,
+      return_url: `${appUrl}/wallet/connect-return`,
+      type: "account_onboarding",
     });
-    accountId = account.id;
-    await admin.from("profiles").update({ stripe_connect_account_id: accountId }).eq("user_id", user.id);
+
+    return new Response(JSON.stringify({ url: accountLink.url }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    // An uncaught throw here would return Deno's default error response,
+    // which has no CORS headers - the browser would report a misleading
+    // "failed to fetch"/network error instead of Stripe's actual message.
+    return new Response(JSON.stringify({ error: `Stripe Connect error: ${(err as Error).message}` }), {
+      status: 502,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
-
-  const appUrl = Deno.env.get("APP_PUBLIC_URL") ?? "https://example.com";
-  const accountLink = await stripe.accountLinks.create({
-    account: accountId,
-    refresh_url: `${appUrl}/wallet/connect-refresh`,
-    return_url: `${appUrl}/wallet/connect-return`,
-    type: "account_onboarding",
-  });
-
-  return new Response(JSON.stringify({ url: accountLink.url }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
 });

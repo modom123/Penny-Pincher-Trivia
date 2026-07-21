@@ -56,14 +56,24 @@ Deno.serve(async (req: Request) => {
   const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
   const appUrl = Deno.env.get("APP_PUBLIC_URL") ?? "https://example.com";
 
-  const session = await stripe.identity.verificationSessions.create({
-    type: "document",
-    metadata: { userId: user.id, clientNumber },
-    options: { document: { require_matching_selfie: true } },
-    return_url: `${appUrl}/wallet/identity-return`,
-  });
+  try {
+    const session = await stripe.identity.verificationSessions.create({
+      type: "document",
+      metadata: { userId: user.id, clientNumber },
+      options: { document: { require_matching_selfie: true } },
+      return_url: `${appUrl}/wallet/identity-return`,
+    });
 
-  return new Response(JSON.stringify({ url: session.url }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+    return new Response(JSON.stringify({ url: session.url }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    // An uncaught throw here would return Deno's default error response,
+    // which has no CORS headers - the browser would report a misleading
+    // "failed to fetch"/network error instead of Stripe's actual message.
+    return new Response(JSON.stringify({ error: `Stripe Identity error: ${(err as Error).message}` }), {
+      status: 502,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 });

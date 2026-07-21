@@ -85,46 +85,56 @@ Deno.serve(async (req: Request) => {
 
   const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
 
-  let customerId = profile?.stripe_customer_id ?? undefined;
-  if (!customerId) {
-    // clientNumber on the Customer itself (not just the Checkout Session) so
-    // it shows up on every future charge/invoice for this player in Stripe's
-    // own dashboard, not just this one purchase.
-    const customer = await stripe.customers.create({
-      email: user.email,
-      name: profile?.username,
-      metadata: { userId: user.id, clientNumber },
-    });
-    customerId = customer.id;
-    await admin.from("profiles").update({ stripe_customer_id: customerId }).eq("user_id", user.id);
-  }
+  try {
+    let customerId = profile?.stripe_customer_id ?? undefined;
+    if (!customerId) {
+      // clientNumber on the Customer itself (not just the Checkout Session) so
+      // it shows up on every future charge/invoice for this player in Stripe's
+      // own dashboard, not just this one purchase.
+      const customer = await stripe.customers.create({
+        email: user.email,
+        name: profile?.username,
+        metadata: { userId: user.id, clientNumber },
+      });
+      customerId = customer.id;
+      await admin.from("profiles").update({ stripe_customer_id: customerId }).eq("user_id", user.id);
+    }
 
-  const appUrl = Deno.env.get("APP_PUBLIC_URL") ?? "https://example.com";
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    customer: customerId,
-    line_items: [
-      {
-        price_data: {
-          currency: "usd",
-          unit_amount: bundle.price_cents,
-          product_data: { name: `Penny Pincher Tokens - ${bundle.label}` },
+    const appUrl = Deno.env.get("APP_PUBLIC_URL") ?? "https://example.com";
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      customer: customerId,
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            unit_amount: bundle.price_cents,
+            product_data: { name: `Penny Pincher Tokens - ${bundle.label}` },
+          },
+          quantity: 1,
         },
-        quantity: 1,
+      ],
+      metadata: {
+        userId: user.id,
+        clientNumber,
+        bundleId: body.bundleId!,
+        tokens: String(bundle.tokens),
+        priceCents: String(bundle.price_cents),
       },
-    ],
-    metadata: {
-      userId: user.id,
-      clientNumber,
-      bundleId: body.bundleId!,
-      tokens: String(bundle.tokens),
-      priceCents: String(bundle.price_cents),
-    },
-    success_url: `${appUrl}/wallet/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${appUrl}/wallet/cancel`,
-  });
+      success_url: `${appUrl}/wallet/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/wallet/cancel`,
+    });
 
-  return new Response(JSON.stringify({ checkoutUrl: session.url, sessionId: session.id }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+    return new Response(JSON.stringify({ checkoutUrl: session.url, sessionId: session.id }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    // An uncaught throw here would return Deno's default error response,
+    // which has no CORS headers - the browser would report a misleading
+    // "failed to fetch"/network error instead of Stripe's actual message.
+    return new Response(JSON.stringify({ error: `Stripe Checkout error: ${(err as Error).message}` }), {
+      status: 502,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 });
