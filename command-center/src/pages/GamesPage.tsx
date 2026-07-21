@@ -47,6 +47,9 @@ type ReadySubject = {
   ready: boolean;
 };
 
+type GamePlayer = { user_id: string; username: string; total_score: number; is_eliminated: boolean };
+type ClientLookup = { client_number: number; email: string };
+
 export default function GamesPage() {
   const [games, setGames] = useState<Game[]>([]);
   const [newMode, setNewMode] = useState<GameMode>('original_escalator');
@@ -63,6 +66,10 @@ export default function GamesPage() {
   const [readySubjects, setReadySubjects] = useState<ReadySubject[]>([]);
   const [contestSubject, setContestSubject] = useState('');
   const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
+  const [clientsById, setClientsById] = useState<Record<string, ClientLookup>>({});
+  const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
+  const [rosters, setRosters] = useState<Record<string, GamePlayer[]>>({});
+  const [rosterLoading, setRosterLoading] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.from('games').select('*').order('created_at', { ascending: false });
@@ -75,9 +82,33 @@ export default function GamesPage() {
     });
     setPlayerCounts(counts);
 
+    const { data: clients } = await supabase.rpc('list_clients', { p_search: null });
+    if (clients) {
+      const map: Record<string, ClientLookup> = {};
+      for (const c of clients as { user_id: string; client_number: number; email: string }[]) {
+        map[c.user_id] = { client_number: c.client_number, email: c.email };
+      }
+      setClientsById(map);
+    }
+
     const { data: subs } = await supabase.rpc('subjects_ready_for_contest');
     if (subs) setReadySubjects(subs as ReadySubject[]);
   }, []);
+
+  // Who's actually signed up for / playing this tournament - not just a
+  // count. Fetched on demand and cached, since most games are never expanded.
+  async function toggleRoster(gameId: string) {
+    if (expandedGameId === gameId) {
+      setExpandedGameId(null);
+      return;
+    }
+    setExpandedGameId(gameId);
+    if (rosters[gameId]) return;
+    setRosterLoading(gameId);
+    const { data } = await supabase.rpc('list_game_players', { p_game_id: gameId });
+    if (data) setRosters((prev) => ({ ...prev, [gameId]: data as GamePlayer[] }));
+    setRosterLoading(null);
+  }
 
   async function publishContest() {
     if (!contestSubject) return;
@@ -377,7 +408,8 @@ export default function GamesPage() {
           </thead>
           <tbody>
             {games.map((g) => (
-              <tr key={g.game_id}>
+              <React.Fragment key={g.game_id}>
+              <tr>
                 <td>{g.game_id.slice(0, 8)}...</td>
                 <td>{MODE_LABELS[g.mode]}</td>
                 <td>{SCHEME_LABELS[g.payout_scheme] ?? g.payout_scheme ?? '—'}</td>
@@ -388,7 +420,15 @@ export default function GamesPage() {
                     : `${g.min_buy_in_tokens != null ? g.min_buy_in_tokens : '0'}–${g.max_buy_in_tokens != null ? g.max_buy_in_tokens : '∞'}`}
                 </td>
                 <td>{g.reup_cutoff_round ?? 30}</td>
-                <td>{playerCounts[g.game_id] ?? 0} / {g.min_players ?? 3}</td>
+                <td>
+                  {(playerCounts[g.game_id] ?? 0) > 0 ? (
+                    <button className="secondary" onClick={() => toggleRoster(g.game_id)}>
+                      {playerCounts[g.game_id] ?? 0} / {g.min_players ?? 3} {expandedGameId === g.game_id ? '▲' : '▼'}
+                    </button>
+                  ) : (
+                    <span>0 / {g.min_players ?? 3}</span>
+                  )}
+                </td>
                 <td>
                   {g.status !== 'registration'
                     ? '—'
@@ -444,6 +484,43 @@ export default function GamesPage() {
                   )}
                 </td>
               </tr>
+              {expandedGameId === g.game_id && (
+                <tr>
+                  <td colSpan={14} style={{ background: '#16161d' }}>
+                    {rosterLoading === g.game_id ? (
+                      <span style={{ color: '#9a9aa5' }}>Loading roster...</span>
+                    ) : (rosters[g.game_id] ?? []).length === 0 ? (
+                      <span style={{ color: '#9a9aa5' }}>No players yet.</span>
+                    ) : (
+                      <table style={{ margin: 0 }}>
+                        <thead>
+                          <tr>
+                            <th>Client #</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Score</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(rosters[g.game_id] ?? []).map((p) => (
+                            <tr key={p.user_id}>
+                              <td>{clientsById[p.user_id] ? `#${clientsById[p.user_id].client_number}` : '—'}</td>
+                              <td>{p.username}</td>
+                              <td>{clientsById[p.user_id]?.email ?? '—'}</td>
+                              <td>{p.total_score}</td>
+                              <td style={{ color: p.is_eliminated ? '#FF4D7D' : '#12E29A' }}>
+                                {p.is_eliminated ? 'Eliminated' : 'Active'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </td>
+                </tr>
+              )}
+              </React.Fragment>
             ))}
             {games.length === 0 && (
               <tr>
