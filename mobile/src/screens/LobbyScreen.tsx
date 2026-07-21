@@ -38,7 +38,10 @@ const MODE_META: Record<GameMode, { label: string; tag: string }> = {
 
 type GamePlayer = { user_id: string; username: string; total_score: number; is_eliminated: boolean };
 
-type RecentWinner = {
+type ActivityKind = 'won' | 'joined' | 'streak';
+
+type ActivityItem = {
+  kind: ActivityKind;
   user_id: string;
   username: string;
   amount_cents: number;
@@ -46,6 +49,19 @@ type RecentWinner = {
   mode: GameMode;
   created_at: string;
 };
+
+function activityText(item: ActivityItem): string {
+  const modeLabel = MODE_META[item.mode]?.label ?? item.mode;
+  switch (item.kind) {
+    case 'won':
+      return `won ${money(item.amount_cents)}`;
+    case 'streak':
+      return `hit a streak — +${money(item.amount_cents)}`;
+    case 'joined':
+    default:
+      return `joined ${modeLabel}`;
+  }
+}
 
 // "2d 04h 12m" / "03:59" style countdown to a target ISO timestamp.
 function formatCountdown(targetIso: string | null, nowMs: number): string {
@@ -64,7 +80,7 @@ function formatCountdown(targetIso: string | null, nowMs: number): string {
 
 export default function LobbyScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { signOut } = useAuth();
+  const { signOut, session } = useAuth();
   const [games, setGames] = useState<Game[]>([]);
   const [balanceCents, setBalanceCents] = useState<number | null>(null);
   const [username, setUsername] = useState<string | null>(null);
@@ -72,23 +88,44 @@ export default function LobbyScreen() {
   const [signingUp, setSigningUp] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(Date.now());
   const [gamePlayers, setGamePlayers] = useState<Record<string, GamePlayer[]>>({});
-  const [recentWinners, setRecentWinners] = useState<RecentWinner[]>([]);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [onlineCount, setOnlineCount] = useState(0);
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [suggestText, setSuggestText] = useState('');
   const [suggestBusy, setSuggestBusy] = useState(false);
 
+  // Genuine presence count - only real, currently-connected players (never a
+  // fabricated number, which would be misleading on a real-money product).
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+    const channel = supabase.channel('lobby-presence', { config: { presence: { key: userId } } });
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        setOnlineCount(Object.keys(channel.presenceState()).length);
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          channel.track({ online_at: new Date().toISOString() });
+        }
+      });
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session?.user?.id]);
+
   const load = useCallback(async () => {
     setRefreshing(true);
-    const [{ data: gameData }, { data: comp }, { data: winners }] = await Promise.all([
+    const [{ data: gameData }, { data: comp }, { data: activityData }] = await Promise.all([
       supabase.rpc('list_lobby_games'),
       supabase.rpc('my_compliance_status'),
-      supabase.rpc('list_recent_winners', { p_limit: 15 }),
+      supabase.rpc('list_recent_activity', { p_limit: 20 }),
     ]);
     const gamesTyped = (gameData as unknown as Game[]) ?? [];
     setGames(gamesTyped);
     if (comp && typeof comp.walletBalanceCents === 'number') setBalanceCents(comp.walletBalanceCents);
     if (comp && typeof comp.username === 'string') setUsername(comp.username);
-    if (winners) setRecentWinners(winners as RecentWinner[]);
+    if (activityData) setActivity(activityData as ActivityItem[]);
 
     // Who's signed up / playing - only for games worth showing a roster for.
     const rosterGames = gamesTyped.filter((g) => g.status === 'registration' || g.status === 'active');
@@ -281,24 +318,34 @@ export default function LobbyScreen() {
         </Pressable>
       </View>
 
-      <Text style={styles.heading}>Games</Text>
+      <View style={styles.headingRow}>
+        <View style={styles.headingLeft}>
+          <Text style={styles.heading}>Games</Text>
+          {onlineCount > 0 && (
+            <View style={styles.onlinePill}>
+              <View style={styles.onlineDot} />
+              <Text style={styles.onlinePillText}>{onlineCount} online</Text>
+            </View>
+          )}
+        </View>
+        <Pressable onPress={() => setSuggestOpen(true)}>
+          <Text style={styles.suggestLink}>💡 Suggest a topic</Text>
+        </Pressable>
+      </View>
 
       <RegionGate />
 
-      {recentWinners.length > 0 && (
-        <>
-          <Text style={styles.sectionHeading}>🏆 Recent Winners</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.winnersRow} contentContainerStyle={{ paddingRight: 12 }}>
-            {recentWinners.map((w, i) => (
-              <View key={`${w.game_id}-${w.user_id}-${i}`} style={styles.winnerChip}>
-                <Avatar name={w.username} size={22} />
-                <Text style={styles.winnerText}>
-                  <Text style={styles.winnerName}>{w.username}</Text> won {money(w.amount_cents)}
-                </Text>
-              </View>
-            ))}
-          </ScrollView>
-        </>
+      {activity.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.winnersRow} contentContainerStyle={{ paddingRight: 12 }}>
+          {activity.map((a, i) => (
+            <View key={`${a.game_id}-${a.user_id}-${i}`} style={styles.winnerChip}>
+              <Avatar name={a.username} size={22} />
+              <Text style={styles.winnerText}>
+                <Text style={styles.winnerName}>{a.username}</Text> {activityText(a)}
+              </Text>
+            </View>
+          ))}
+        </ScrollView>
       )}
 
       <ScrollView
@@ -320,10 +367,6 @@ export default function LobbyScreen() {
             {upcomingGames.map(renderGameCard)}
           </>
         )}
-
-        <Pressable style={styles.suggestBtn} onPress={() => setSuggestOpen(true)}>
-          <Text style={styles.suggestBtnText}>💡 Suggest a topic or question</Text>
-        </Pressable>
       </ScrollView>
 
       <Modal visible={suggestOpen} transparent animationType="fade" onRequestClose={() => setSuggestOpen(false)}>
@@ -384,7 +427,28 @@ const styles = StyleSheet.create({
   leaderboardLink: { fontSize: 22 },
   signOut: { color: theme.textMuted, fontSize: 13 },
 
-  heading: { color: theme.text, fontSize: 26, fontWeight: '900', marginBottom: 14 },
+  headingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  headingLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  heading: { color: theme.text, fontSize: 26, fontWeight: '900' },
+  onlinePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: theme.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.border,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  onlineDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: theme.emerald },
+  onlinePillText: { color: theme.textMuted, fontSize: 12, fontWeight: '700' },
+  suggestLink: { color: theme.textMuted, fontSize: 13, fontWeight: '700' },
   sectionHeading: { color: theme.textMuted, fontSize: 13, fontWeight: '800', letterSpacing: 1, marginBottom: 10, marginTop: 4 },
   empty: { color: theme.textMuted, textAlign: 'center', marginTop: 48 },
 
@@ -462,17 +526,6 @@ const styles = StyleSheet.create({
   },
   winnerText: { color: theme.textMuted, fontSize: 12, fontWeight: '600' },
   winnerName: { color: theme.text, fontWeight: '800' },
-
-  suggestBtn: {
-    backgroundColor: theme.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: theme.border,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  suggestBtnText: { color: theme.textMuted, fontWeight: '700', fontSize: 14 },
 
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', padding: 24 },
   modalCard: { backgroundColor: theme.surface, borderRadius: 18, borderWidth: 1, borderColor: theme.border, padding: 20 },
