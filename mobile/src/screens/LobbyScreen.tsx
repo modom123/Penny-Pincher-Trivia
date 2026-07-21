@@ -28,12 +28,25 @@ type Game = {
   join_open: boolean;
   subject_name: string | null;
   subject_domain: string | null;
+  min_buy_in_tokens: number | null;
+  max_buy_in_tokens: number | null;
+  payout_scheme: PayoutScheme;
+  round_seconds: number;
 };
 
 const MODE_META: Record<GameMode, { label: string; tag: string }> = {
   original_escalator: { label: 'The Escalator', tag: 'Round N costs N¢' },
   streak_saver: { label: 'Streak Saver', tag: 'Play free with a streak' },
   milestone_booster: { label: 'Milestone Booster', tag: 'Flat tiers: Bronze→Platinum' },
+};
+
+type PayoutScheme = 'standard' | 'classic_top3' | 'winner_take_most' | 'spread_the_wealth';
+
+const SCHEME_LABELS: Record<PayoutScheme, string> = {
+  standard: 'Payouts scale with field size',
+  classic_top3: 'Top 3 split 50/30/20',
+  winner_take_most: 'Winner-take-most 70/20/10',
+  spread_the_wealth: 'Spread the Wealth (~top 25%)',
 };
 
 type GamePlayer = { user_id: string; username: string; total_score: number; is_eliminated: boolean };
@@ -225,7 +238,7 @@ export default function LobbyScreen() {
     return (
       <Pressable
         key={item.game_id}
-        style={styles.card}
+        style={[styles.card, isRegistration && styles.cardStatic]}
         disabled={isRegistration}
         onPress={() => navigation.navigate('Game', { gameId: item.game_id })}
       >
@@ -234,6 +247,16 @@ export default function LobbyScreen() {
           {item.subject_name ? <Text style={styles.subjectBadge}>{item.subject_name}</Text> : null}
         </View>
         <Text style={styles.cardTag}>{meta.tag}</Text>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoChip}>⏱ {item.round_seconds}s/question</Text>
+          <Text style={styles.infoChip}>🏆 {SCHEME_LABELS[item.payout_scheme] ?? item.payout_scheme}</Text>
+          {(item.min_buy_in_tokens != null || item.max_buy_in_tokens != null) && (
+            <Text style={styles.infoChip}>
+              💰 Buy-in {item.min_buy_in_tokens != null ? money(item.min_buy_in_tokens) : '$0'}–
+              {item.max_buy_in_tokens != null ? money(item.max_buy_in_tokens) : '∞'}
+            </Text>
+          )}
+        </View>
 
         <View style={styles.poolRow}>
           <View>
@@ -460,6 +483,10 @@ const styles = StyleSheet.create({
     padding: 18,
     marginBottom: 14,
   },
+  // Registration-stage cards aren't tappable yet (the game hasn't started) -
+  // a plain border instead of a filled surface signals "not a button" so it
+  // doesn't look broken when tapping does nothing.
+  cardStatic: { backgroundColor: 'transparent', borderStyle: 'dashed' },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardMode: { color: theme.emerald, fontSize: 17, fontWeight: '800' },
   subjectBadge: {
@@ -473,6 +500,17 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardTag: { color: theme.textMuted, fontSize: 13, marginTop: 3 },
+  infoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
+  infoChip: {
+    color: theme.textMuted,
+    fontSize: 11,
+    fontWeight: '700',
+    backgroundColor: theme.surfaceAlt,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    overflow: 'hidden',
+  },
 
   poolRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 14 },
   poolLabel: { color: theme.textMuted, fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
