@@ -29,11 +29,14 @@ export default function ClientsPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (q: string) => {
     setLoading(true);
-    const { data } = await supabase.rpc('list_clients', { p_search: q || null });
-    if (data) setClients(data as Client[]);
+    setError(null);
+    const { data, error } = await supabase.rpc('list_clients', { p_search: q || null });
+    if (error) setError(error.message);
+    else setClients((data ?? []) as Client[]);
     setLoading(false);
   }, []);
 
@@ -125,7 +128,8 @@ export default function ClientsPage() {
             ))}
           </tbody>
         </table>
-        {clients.length === 0 && !loading && <p style={{ color: '#9a9aa5' }}>No clients match that search.</p>}
+        {error && <p style={{ color: '#ef4444' }}>Error loading clients: {error}</p>}
+        {!error && clients.length === 0 && !loading && <p style={{ color: '#9a9aa5' }}>No clients match that search.</p>}
       </div>
     </div>
   );
