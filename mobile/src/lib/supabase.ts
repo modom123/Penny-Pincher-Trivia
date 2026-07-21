@@ -18,3 +18,20 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
   },
 });
+
+// supabase.functions.invoke()'s error.message is always the generic
+// "Edge Function returned a non-2xx status code" - the real reason our edge
+// functions send back (e.g. "Stripe Identity error: ...") lives in
+// error.context, the raw Response, and has to be read separately.
+export async function edgeFunctionErrorMessage(error: unknown): Promise<string> {
+  const withContext = error as { context?: Response; message?: string };
+  if (withContext?.context && typeof withContext.context.json === 'function') {
+    try {
+      const body = await withContext.context.json();
+      if (body && typeof body.error === 'string') return body.error;
+    } catch {
+      // Response body wasn't JSON (or was already consumed) - fall through.
+    }
+  }
+  return withContext?.message ?? 'Something went wrong. Please try again.';
+}

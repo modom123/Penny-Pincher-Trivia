@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Image, Pressable, StyleSheet, ActivityIndicator, ScrollView, TextInput, Platform, Linking } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { supabase } from '../lib/supabase';
+import { supabase, edgeFunctionErrorMessage } from '../lib/supabase';
 import { showAlert } from '../lib/alert';
 import { theme } from '../theme';
 
@@ -102,7 +102,7 @@ export default function WalletScreen() {
       // leg above (or a focus refresh on desktop) syncs the balance back.
       openUrl(data.checkoutUrl);
     } catch (err) {
-      showAlert('Checkout failed', (err as Error).message);
+      showAlert('Checkout failed', await edgeFunctionErrorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -115,7 +115,7 @@ export default function WalletScreen() {
       if (error) throw error;
       openUrl(data.url);
     } catch (err) {
-      showAlert('Could not start onboarding', (err as Error).message);
+      showAlert('Could not start onboarding', await edgeFunctionErrorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -128,7 +128,7 @@ export default function WalletScreen() {
       if (error) throw error;
       openUrl(data.url);
     } catch (err) {
-      showAlert('Could not start verification', (err as Error).message);
+      showAlert('Could not start verification', await edgeFunctionErrorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -149,7 +149,7 @@ export default function WalletScreen() {
       await load();
     } catch (err) {
       // Surface the specific compliance gate the server enforced.
-      showAlert('Withdrawal blocked', (err as Error).message);
+      showAlert('Withdrawal blocked', await edgeFunctionErrorMessage(err));
       await load();
     } finally {
       setBusy(false);
