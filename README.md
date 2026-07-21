@@ -93,13 +93,20 @@ Set at game creation (`games.mode` enum), same underlying engine for all three:
 - **Streak Saver** - a correct answer waives the *next* round's entry fee entirely;
   a wrong answer resumes normal pricing. Average spend is lower, but "play free if
   you're right" is a stronger virality hook.
-- **Milestone Booster** - flat per-tier pricing (Bronze 1-25 = 10¢ / Silver 26-50 = 25¢
-  / Gold 51-75 = 50¢ / Platinum 76-100 = $1.00). The prize pool is funded **solely by
-  player entry fees** (60/40), the same as the other modes. An earlier design added a
-  platform-funded $5 bonus at rounds 25/50/75; that was **removed** (migration
+- **Milestone Booster** - same per-round pricing as the Escalator (round *N* costs *N*
+  cents), but every 10th round (10, 20, … 100) is a **bonus question**: answer it
+  correctly and that round's cost is credited straight back as non-withdrawable bonus
+  tokens; answer it incorrectly and the same amount is clawed back out of the player's
+  *existing* bonus-token balance only (`least(cost, promo_balance)`) - never real cash,
+  wallet never goes negative. See `20260721000000_milestone_booster_bonus_rounds.sql`.
+  The prize pool is funded **solely by player entry fees** (60/40), the same as the
+  other modes; the bonus-round credit/clawback never touches it. An earlier design added
+  a platform-funded $5 bonus at rounds 25/50/75; that was **removed** (migration
   `20260709000000_milestone_booster_drop_platform_bonus.sql`) because a platform-funded
-  prize could raise its own sweepstakes-classification question - so this mode is now a
-  pure skill-contest pricing variant.
+  prize could raise its own sweepstakes-classification question - the bonus-round
+  mechanic here is deliberately structured like the "3 the hard way" streak bonus (see
+  Wallet section below) to stay on the safe side of that line: player-funded
+  bonus-token movement only, never platform cash.
 
 **Sudden Death Overtime**: if 2+ players are tied for a top-3 finish at round 100,
 `payout_game` doesn't pay out - it opens overtime rounds (flat $1 fee, shrinking timer
@@ -158,6 +165,11 @@ inflate real payouts:
   (60/40) — the pool can never exceed the real USD collected.
 - `reserve_withdrawal` draws **only** cash; dipping into bonus raises
   `INSUFFICIENT_WITHDRAWABLE`.
+- **"3 the hard way" streak bonus** (all modes, always on): once a player answers 3
+  rounds in a row correctly, every correct answer after that credits the round's cost
+  right back to their balance as bonus tokens, for as long as the streak holds — one
+  wrong answer resets it to zero. Bonus-only: never touches cash or the prize pool. See
+  `20260718040000_streak_bonus_the_hard_way.sql`.
 - **Per-game buy-in limits**: `games.min_buy_in_tokens` (must *hold* ≥ MIN to join —
   `MIN_BUYIN_REQUIRED`) and `games.max_buy_in_tokens` (cumulative token-spend cap —
   `MAX_BUYIN_REACHED`); null = no limit.

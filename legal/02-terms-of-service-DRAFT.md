@@ -90,9 +90,10 @@ The full mechanics are in the Official Rules (incorporated by reference). In sum
 
 5.1. **Structure.** A Contest has up to 100 progressively priced Rounds. In the standard
 mode, **Round *N* costs *N* Tokens** (Round 1 = 1¢ … Round 100 = $1.00). Other modes
-(Streak Saver, Milestone Booster) vary Entry-Fee timing and are described in the Official
-Rules. `[COUNSEL: the Milestone Booster mode injects platform-funded prize bonuses; review
-whether this affects the contest's classification before enabling it for real money.]`
+(Streak Saver, Milestone Booster) vary Entry-Fee timing and bonus mechanics, and are
+described in the Official Rules. Milestone Booster's bonus-round mechanic and the
+cross-mode "3 the Hard Way" streak bonus only ever move a player's own non-withdrawable
+bonus-token balance - they are never platform-funded and never affect the prize pool.
 
 5.2. **The same questions for everyone.** Every entrant in a given Contest answers the
 identical set of Rounds. Outcomes are determined by your **knowledge and answer speed**,

@@ -40,20 +40,35 @@ monetization model, without a definitive answer to this question per target stat
   this variable-cost structure changes the AMOE analysis above.]`
 
 ### Game 3: Milestone Booster
-- Entry cost: flat per-tier pricing (Bronze rounds 1-25 = $0.10, Silver 26-50 = $0.25,
-  Gold 51-75 = $0.50, Platinum 76-100 = $1.00).
+- Entry cost: same per-round pricing as Game 1 (Round *N* costs $0.01 × *N*).
+- Every 10th round (10, 20, ... 100) is a **bonus question**: a correct answer credits
+  that round's cost back to the player's balance as non-withdrawable bonus tokens; an
+  incorrect answer claws the same amount back out of the player's *existing* bonus-token
+  balance only - never withdrawable cash, and never more than the player currently holds
+  in bonus tokens.
 - Prize pool is funded **solely by player entry fees** (60% pool / 40% platform fee),
-  identical to the other two modes. There is **no** platform-funded prize injection.
+  identical to the other two modes. The bonus-round credit/clawback never adds to or
+  draws from the prize pool - there is **no** platform-funded prize injection.
   `[HISTORY: an earlier design injected a platform-funded "guaranteed bonus" into the pot
   at rounds 25/50/75. That was removed because a platform-funded prize - as opposed to
   one funded purely by entry fees - could raise its own sweepstakes/AMOE classification
-  question. This mode is now a pure skill-contest pricing variant.]`
+  question. The bonus-round mechanic added here is deliberately structured the same way
+  as the "3 the Hard Way" streak bonus below: player-funded bonus-token movement only,
+  never platform-funded cash, to stay on the same side of that line.]`
 
 ### Sudden Death Overtime (applies to all three modes)
 - Triggered only if two or more players are tied for a top-3 finishing position at
   Round 100.
 - Live, shrinking-timer tiebreaker; flat entry fee per question (`[OPS: insert amount,
   e.g., $1.00]`) until the tie is resolved.
+
+### Streak Bonus ("3 the Hard Way", applies to all three modes)
+- After three consecutive correct answers, and for every correct answer while that
+  streak continues, the round's cost is credited back to the player's balance as
+  non-withdrawable bonus tokens. One incorrect answer resets the streak to zero.
+- This affects only how far a player's funds carry them within a single game - it does
+  not add to, or draw from, the prize pool, and has no effect on withdrawable cash or
+  payouts.
 
 ## Odds Disclosure
 

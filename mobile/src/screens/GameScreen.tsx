@@ -30,6 +30,7 @@ export default function GameScreen({ route, navigation }: Props) {
   const [selected, setSelected] = useState<Option | null>(null);
   const [selectedCorrect, setSelectedCorrect] = useState<boolean | null>(null);
   const [streakBonusCents, setStreakBonusCents] = useState<number | null>(null);
+  const [milestoneBonusCents, setMilestoneBonusCents] = useState<number | null>(null);
   const [isSpectator, setIsSpectator] = useState(false);
   // Per-round outcome history for the progress tracker: 'correct' | 'incorrect'.
   const [history, setHistory] = useState<Record<number, 'correct' | 'incorrect'>>({});
@@ -95,6 +96,7 @@ export default function GameScreen({ route, navigation }: Props) {
         setSelected(null);
         setSelectedCorrect(null);
         setStreakBonusCents(null);
+        setMilestoneBonusCents(null);
         setStreakFree(false);
         setPhase('open');
         setLastResult(null);
@@ -221,6 +223,7 @@ export default function GameScreen({ route, navigation }: Props) {
     setPhase('answered');
     setSelectedCorrect(Boolean(data.isCorrect));
     setStreakBonusCents(data.streakBonusCents > 0 ? data.streakBonusCents : null);
+    setMilestoneBonusCents(data.milestoneBonusCents ? data.milestoneBonusCents : null);
     setHistory((h) => ({ ...h, [round.roundNumber]: data.isCorrect ? 'correct' : 'incorrect' }));
   }
 
@@ -328,6 +331,13 @@ export default function GameScreen({ route, navigation }: Props) {
 
       {phase === 'answered' && !!streakBonusCents && (
         <Text style={styles.streakBadge}>3 the hard way! +{money(streakBonusCents)} bonus credited 🔥</Text>
+      )}
+
+      {phase === 'answered' && !!milestoneBonusCents && milestoneBonusCents > 0 && (
+        <Text style={styles.streakBadge}>Bonus round! +{money(milestoneBonusCents)} credited back 🎯</Text>
+      )}
+      {phase === 'answered' && !!milestoneBonusCents && milestoneBonusCents < 0 && (
+        <Text style={styles.penaltyBadge}>Bonus round missed — -{money(-milestoneBonusCents)} bonus balance clawed back</Text>
       )}
 
       {purchased && phase !== 'closed' && (
@@ -473,6 +483,7 @@ const styles = StyleSheet.create({
   buyButtonText: { color: theme.bg, textAlign: 'center', fontWeight: '900', fontSize: 17 },
 
   streakBadge: { color: theme.emerald, fontWeight: '800', marginBottom: 12, fontSize: 15 },
+  penaltyBadge: { color: theme.crimson, fontWeight: '800', marginBottom: 12, fontSize: 15 },
 
   options: { gap: 12, marginTop: 4 },
   optionButton: {

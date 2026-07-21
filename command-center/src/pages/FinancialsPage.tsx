@@ -271,6 +271,7 @@ export default function FinancialsPage() {
           <option value="entry_fee_debit">entry_fee_debit</option>
           <option value="round_debit">round_debit</option>
           <option value="streak_bonus">streak_bonus</option>
+          <option value="milestone_bonus">milestone_bonus</option>
           <option value="payout">payout</option>
           <option value="withdrawal">withdrawal</option>
           <option value="admin_adjustment">admin_adjustment</option>

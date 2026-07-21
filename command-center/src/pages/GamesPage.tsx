@@ -253,14 +253,21 @@ export default function GamesPage() {
           </div>
           <div style={{ background: '#1c1c24', borderRadius: 10, padding: '10px 12px', fontSize: 13 }}>
             <b>Milestone Booster</b>
-            <p style={{ color: '#9a9aa5', margin: '4px 0 0' }}>Flat per-tier pricing: Bronze 1-25 = 10¢ · Silver 26-50 = 25¢ · Gold 51-75 = 50¢ · Platinum 76-100 = $1.</p>
+            <p style={{ color: '#9a9aa5', margin: '4px 0 0' }}>
+              Same round N = N¢ pricing as the Escalator, but every 10th round (10, 20…100) is a <b>bonus question</b>:
+              answer it right and that round's cost is credited straight back as bonus balance; answer it wrong and
+              the same amount is clawed back out of existing bonus balance only — never real cash, wallet never goes
+              negative.
+            </p>
           </div>
         </div>
         <p style={{ color: '#9a9aa5', fontSize: 13, marginTop: 0, background: '#1c1c24', borderRadius: 10, padding: '10px 12px' }}>
           🔥 <b>3 the hard way</b> (all modes, always on): once a player answers 3 rounds in a row correctly, every
           correct answer after that credits the round's cost right back to their balance (as bonus tokens) for as
           long as the streak holds — one wrong answer resets it. This is separate from Streak Saver's free-round
-          waiver and stacks with it. Shows up in the ledger as <code>streak_bonus</code> (Financials page).
+          waiver and Milestone Booster's bonus rounds, and stacks with both. Shows up in the ledger as{' '}
+          <code>streak_bonus</code> (Financials page); Milestone Booster's bonus rounds show up as{' '}
+          <code>milestone_bonus</code>.
         </p>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <select value={newMode} onChange={(e) => setNewMode(e.target.value as GameMode)} style={{ maxWidth: 240 }}>
