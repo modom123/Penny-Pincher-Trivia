@@ -190,7 +190,7 @@ export default function GameScreen({ route, navigation }: Props) {
       if (error.message.includes('TOP_UP_REQUIRED')) {
         showAlert('Top up to continue', "You don't have enough tokens for this round. Add funds to keep playing.", [
           { text: 'Not now', style: 'cancel' },
-          { text: 'Go to Wallet', onPress: () => navigation.navigate('Wallet') },
+          { text: 'Go to Wallet', onPress: () => navigation.navigate('Main', { screen: 'Wallet' }) },
         ]);
       } else {
         showAlert("Couldn't buy round", error.message.replace(/^[A-Z_]+:\s*/, ''));
@@ -198,7 +198,7 @@ export default function GameScreen({ route, navigation }: Props) {
       return;
     }
     if (data?.gameOver) {
-      showAlert('Game over', data.message, [{ text: 'OK', onPress: () => navigation.replace('Lobby') }]);
+      showAlert('Game over', data.message, [{ text: 'OK', onPress: () => navigation.replace('Main', { screen: 'Home' }) }]);
       return;
     }
     setStreakFree(Boolean(data?.streakFree));

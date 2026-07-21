@@ -83,12 +83,21 @@ Return ONLY a JSON array, no prose. Each item exactly:
   return Array.isArray(parsed) ? parsed.filter(validShape) : [];
 }
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) {
     return new Response(JSON.stringify({ error: "Question generation is not configured (missing ANTHROPIC_API_KEY)." }), {
       status: 503,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
@@ -104,7 +113,7 @@ Deno.serve(async (req: Request) => {
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing Authorization header" }), {
         status: 401,
-        headers: { "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     const userClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
@@ -116,7 +125,7 @@ Deno.serve(async (req: Request) => {
     if (staffError || !isStaff) {
       return new Response(JSON.stringify({ error: "Forbidden: staff access required" }), {
         status: 403,
-        headers: { "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
   }
@@ -168,7 +177,7 @@ Deno.serve(async (req: Request) => {
           errors: [],
           skippedReason: `No content budget available (balance ${budgetCentsAtStart}c, needs ${estCostCentsPerCall}c/call). Waiting for a completed tournament to fund it, or run manually with ignoreBudget.`,
         }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
   }
@@ -181,7 +190,7 @@ Deno.serve(async (req: Request) => {
     .limit(300); // wide pool; already-covered subjects are skipped below without counting against maxSubjects
 
   if (subjErr) {
-    return new Response(JSON.stringify({ error: subjErr.message }), { status: 500, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: subjErr.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   let callsMade = 0;
@@ -257,6 +266,6 @@ Deno.serve(async (req: Request) => {
 
   return new Response(
     JSON.stringify({ subjectsProcessed, callsMade, drafted, perSubjectResults, errors, budgetCentsRemaining }),
-    { status: 200, headers: { "Content-Type": "application/json" } }
+    { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 });

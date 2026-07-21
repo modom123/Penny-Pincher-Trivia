@@ -11,6 +11,7 @@ import { theme } from '../theme';
 export default function UsernamePickerScreen() {
   const { refreshUsername, signOut } = useAuth();
   const [username, setUsername] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function save() {
@@ -18,6 +19,15 @@ export default function UsernamePickerScreen() {
     try {
       const { error } = await supabase.rpc('set_username', { p_username: username });
       if (error) throw error;
+
+      // Best-effort - a bad/missing code shouldn't block getting into the app,
+      // and this is the one moment it can be applied (before the first round).
+      if (referralCode.trim()) {
+        const { error: refError } = await supabase.rpc('apply_referral_code', { p_code: referralCode.trim() });
+        if (refError) {
+          showAlert('Referral code not applied', refError.message.replace(/^[A-Z_]+:\s*/, ''));
+        }
+      }
       await refreshUsername();
     } catch (err) {
       showAlert('Try another name', (err as Error).message.replace(/^[A-Z_]+:\s*/, ''));
@@ -41,6 +51,16 @@ export default function UsernamePickerScreen() {
         maxLength={20}
         value={username}
         onChangeText={setUsername}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Referral code (optional)"
+        placeholderTextColor={theme.textMuted}
+        autoCapitalize="characters"
+        autoCorrect={false}
+        maxLength={20}
+        value={referralCode}
+        onChangeText={setReferralCode}
       />
       <Pressable style={[styles.button, busy && styles.buttonDisabled]} onPress={save} disabled={busy}>
         <Text style={styles.buttonText}>{busy ? 'Saving…' : 'Continue'}</Text>

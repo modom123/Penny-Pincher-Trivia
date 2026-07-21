@@ -1,14 +1,20 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Image, ScrollView, Pressable, StyleSheet, RefreshControl, Modal, TextInput, ActivityIndicator } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, type CompositeNavigationProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { supabase } from '../lib/supabase';
 import { showAlert } from '../lib/alert';
 import { useAuth } from '../contexts/AuthContext';
 import { theme, money } from '../theme';
 import RegionGate from '../components/RegionGate';
 import Avatar from '../components/Avatar';
-import type { RootStackParamList } from '../types';
+import type { RootStackParamList, MainTabParamList } from '../types';
+
+type LobbyNavigationProp = CompositeNavigationProp<
+  BottomTabNavigationProp<MainTabParamList, 'Home'>,
+  NativeStackNavigationProp<RootStackParamList>
+>;
 
 type GameMode = 'original_escalator' | 'streak_saver' | 'milestone_booster';
 
@@ -92,8 +98,8 @@ function formatCountdown(targetIso: string | null, nowMs: number): string {
 }
 
 export default function LobbyScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { signOut, session } = useAuth();
+  const navigation = useNavigation<LobbyNavigationProp>();
+  const { session } = useAuth();
   const [games, setGames] = useState<Game[]>([]);
   const [balanceCents, setBalanceCents] = useState<number | null>(null);
   const [username, setUsername] = useState<string | null>(null);
@@ -319,8 +325,9 @@ export default function LobbyScreen() {
     );
   };
 
-  const liveGames = games.filter((g) => g.status === 'active');
-  const upcomingGames = games.filter((g) => g.status !== 'active');
+  const myGames = games.filter((g) => g.is_registered);
+  const liveGames = games.filter((g) => g.status === 'active' && !g.is_registered);
+  const upcomingGames = games.filter((g) => g.status !== 'active' && !g.is_registered);
 
   return (
     <View style={styles.container}>
@@ -335,7 +342,8 @@ export default function LobbyScreen() {
         </Text>
       </View>
 
-      {/* Top bar: avatar, unified Penny Wallet balance + quick deposit */}
+      {/* Top bar: avatar, unified Penny Wallet balance + quick deposit. Leaderboard,
+          full Wallet, Refer & Earn, and sign out live in the bottom tab bar now. */}
       <View style={styles.topBar}>
         <Avatar name={username || '?'} size={36} />
         <Pressable style={styles.walletPill} onPress={() => navigation.navigate('Wallet')}>
@@ -343,12 +351,6 @@ export default function LobbyScreen() {
           <View style={styles.plus}>
             <Text style={styles.plusText}>+</Text>
           </View>
-        </Pressable>
-        <Pressable onPress={() => navigation.navigate('Leaderboard')}>
-          <Text style={styles.leaderboardLink}>🏆</Text>
-        </Pressable>
-        <Pressable onPress={signOut}>
-          <Text style={styles.signOut}>Sign out</Text>
         </Pressable>
       </View>
 
@@ -387,6 +389,13 @@ export default function LobbyScreen() {
         refreshControl={<RefreshControl tintColor={theme.emerald} refreshing={refreshing} onRefresh={load} />}
       >
         {games.length === 0 && <Text style={styles.empty}>No games right now. Pull to refresh.</Text>}
+
+        {myGames.length > 0 && (
+          <>
+            <Text style={styles.sectionHeading}>🎟 My Entries</Text>
+            {myGames.map(renderGameCard)}
+          </>
+        )}
 
         {liveGames.length > 0 && (
           <>
@@ -463,8 +472,6 @@ const styles = StyleSheet.create({
   walletBalance: { color: theme.gold, fontSize: 18, fontWeight: '900' },
   plus: { width: 30, height: 30, borderRadius: 15, backgroundColor: theme.emerald, alignItems: 'center', justifyContent: 'center' },
   plusText: { color: theme.bg, fontSize: 22, fontWeight: '900', marginTop: -2 },
-  leaderboardLink: { fontSize: 22 },
-  signOut: { color: theme.textMuted, fontSize: 13 },
 
   headingRow: {
     flexDirection: 'row',

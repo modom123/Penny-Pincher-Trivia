@@ -69,7 +69,7 @@ export default function ResultsScreen({ route, navigation }: Props) {
         )}
       />
 
-      <Pressable style={styles.button} onPress={() => navigation.replace('Lobby')}>
+      <Pressable style={styles.button} onPress={() => navigation.replace('Main', { screen: 'Home' })}>
         <Text style={styles.buttonText}>Back to Lobby</Text>
       </Pressable>
     </View>

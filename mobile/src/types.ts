@@ -34,12 +34,17 @@ export type ChatMessage = {
   created_at: string;
 };
 
+export type MainTabParamList = {
+  Home: undefined;
+  Wallet: undefined;
+  Leaderboard: undefined;
+  Refer: undefined;
+};
+
 export type RootStackParamList = {
   Auth: undefined;
   Username: undefined;
-  Lobby: undefined;
-  Wallet: undefined;
-  Leaderboard: undefined;
+  Main: { screen?: keyof MainTabParamList } | undefined;
   Game: { gameId: string };
   Results: { payload: GameCompletedPayload };
 };

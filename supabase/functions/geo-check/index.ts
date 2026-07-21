@@ -54,12 +54,21 @@ async function verifyRadarToken(token: string, secret: string): Promise<RadarRes
   return { ok: true, state, country, verified: true };
 }
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
     return new Response(JSON.stringify({ error: "Missing Authorization header" }), {
       status: 401,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
@@ -73,7 +82,7 @@ Deno.serve(async (req: Request) => {
   if (userError || !user) {
     return new Response(JSON.stringify({ error: "Invalid or expired session" }), {
       status: 401,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
@@ -83,7 +92,7 @@ Deno.serve(async (req: Request) => {
   } catch {
     return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
       status: 400,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
@@ -99,7 +108,7 @@ Deno.serve(async (req: Request) => {
     if (!result.ok) {
       return new Response(JSON.stringify({ error: "LOCATION_VERIFICATION_FAILED", reason: result.reason, regionBlocked: true }), {
         status: 403,
-        headers: { "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     state = result.state;
@@ -111,14 +120,14 @@ Deno.serve(async (req: Request) => {
   if (radarEnforced && !verified) {
     return new Response(
       JSON.stringify({ error: "LOCATION_VERIFICATION_REQUIRED", regionBlocked: true, verificationRequired: true }),
-      { status: 403, headers: { "Content-Type": "application/json" } }
+      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
   if (!state || !/^[A-Z]{2}$/.test(state)) {
     return new Response(JSON.stringify({ error: "A valid 2-letter state code is required" }), {
       status: 400,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
@@ -137,6 +146,6 @@ Deno.serve(async (req: Request) => {
 
   return new Response(
     JSON.stringify({ state, country, regionBlocked, verified, verificationRequired: radarEnforced, allowedStates: allowed }),
-    { headers: { "Content-Type": "application/json" } }
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 });

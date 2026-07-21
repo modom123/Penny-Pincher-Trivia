@@ -14,12 +14,21 @@ type DraftRequest = {
   roundEnd: number;
 };
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) {
     return new Response(JSON.stringify({ error: "Question generation is not configured (missing ANTHROPIC_API_KEY)." }), {
       status: 503,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
@@ -27,7 +36,7 @@ Deno.serve(async (req: Request) => {
   if (!authHeader) {
     return new Response(JSON.stringify({ error: "Missing Authorization header" }), {
       status: 401,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
@@ -40,7 +49,7 @@ Deno.serve(async (req: Request) => {
   if (staffError || !isStaff) {
     return new Response(JSON.stringify({ error: "Forbidden: staff access required" }), {
       status: 403,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
@@ -50,20 +59,20 @@ Deno.serve(async (req: Request) => {
   } catch {
     return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
       status: 400,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
   const { category, roundStart, roundEnd } = body;
   if (!Number.isInteger(roundStart) || !Number.isInteger(roundEnd) || roundStart < 1 || roundEnd > 100 || roundStart > roundEnd) {
     return new Response(JSON.stringify({ error: "roundStart/roundEnd must be a valid 1-100 range" }), {
       status: 400,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
   if (roundEnd - roundStart > 24) {
     return new Response(JSON.stringify({ error: "Request at most 25 rounds at a time" }), {
       status: 400,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
@@ -90,7 +99,7 @@ Deno.serve(async (req: Request) => {
     const text = await response.text();
     return new Response(JSON.stringify({ error: `LLM request failed: ${response.status} ${text}` }), {
       status: 502,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
@@ -110,7 +119,7 @@ Deno.serve(async (req: Request) => {
   } catch {
     return new Response(JSON.stringify({ error: "Could not parse LLM output as JSON", raw: rawText }), {
       status: 502,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
@@ -142,12 +151,12 @@ Deno.serve(async (req: Request) => {
   if (insertError) {
     return new Response(JSON.stringify({ error: insertError.message }), {
       status: 500,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
   return new Response(JSON.stringify({ drafted: inserted.length, skipped: drafts.length - valid.length, drafts: inserted }), {
     status: 201,
-    headers: { "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
