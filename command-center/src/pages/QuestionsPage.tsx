@@ -25,6 +25,14 @@ type QuestionDraft = {
   created_at: string;
 };
 
+type TopicSuggestion = {
+  id: string;
+  user_id: string;
+  suggestion_text: string;
+  status: string;
+  created_at: string;
+};
+
 type SubjectCoverage = {
   subject_id: string;
   slug: string;
@@ -66,6 +74,8 @@ export default function QuestionsPage() {
   const [genMessage, setGenMessage] = useState<string | null>(null);
   const [coverage, setCoverage] = useState<SubjectCoverage[]>([]);
   const [coverageFilter, setCoverageFilter] = useState('');
+  const [suggestions, setSuggestions] = useState<TopicSuggestion[]>([]);
+  const [suggestionBusy, setSuggestionBusy] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -84,7 +94,25 @@ export default function QuestionsPage() {
 
     const { data: cov } = await supabase.rpc('subject_curation_status');
     if (cov) setCoverage(cov as SubjectCoverage[]);
+
+    const { data: sugg } = await supabase
+      .from('topic_suggestions')
+      .select('*')
+      .eq('status', 'new')
+      .order('created_at', { ascending: false });
+    if (sugg) setSuggestions(sugg as TopicSuggestion[]);
   }, []);
+
+  async function setSuggestionStatus(id: string, status: 'reviewed' | 'dismissed') {
+    setSuggestionBusy(id);
+    try {
+      const { error } = await supabase.rpc('admin_set_topic_suggestion_status', { p_id: id, p_status: status });
+      if (error) throw error;
+      setSuggestions((prev) => prev.filter((s) => s.id !== id));
+    } finally {
+      setSuggestionBusy(null);
+    }
+  }
 
   useEffect(() => {
     load();
@@ -214,6 +242,41 @@ export default function QuestionsPage() {
   return (
     <div>
       <h2>Question Bank</h2>
+
+      {suggestions.length > 0 && (
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>Player topic suggestions ({suggestions.length})</h3>
+          <p style={{ color: '#9a9aa5', fontSize: 13 }}>
+            Submitted from the app's "Suggest a topic or question" box. Mark reviewed once you've acted on it (e.g.
+            added a subject or drafted a question from it), or dismiss if it's not usable.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Submitted</th>
+                <th>Suggestion</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {suggestions.map((s) => (
+                <tr key={s.id}>
+                  <td style={{ color: '#9a9aa5', whiteSpace: 'nowrap' }}>{new Date(s.created_at).toLocaleDateString()}</td>
+                  <td>{s.suggestion_text}</td>
+                  <td style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={() => setSuggestionStatus(s.id, 'reviewed')} disabled={suggestionBusy === s.id}>
+                      Mark reviewed
+                    </button>
+                    <button className="danger" onClick={() => setSuggestionStatus(s.id, 'dismissed')} disabled={suggestionBusy === s.id}>
+                      Dismiss
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Curation coverage</h3>

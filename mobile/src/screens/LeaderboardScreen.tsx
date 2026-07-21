@@ -3,6 +3,7 @@ import { View, Text, FlatList, StyleSheet, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { theme, money } from '../theme';
+import Avatar from '../components/Avatar';
 
 type Row = { user_id: string; username: string; lifetime_winnings_cents: number };
 
@@ -38,6 +39,7 @@ export default function LeaderboardScreen() {
         renderItem={({ item, index }) => (
           <View style={styles.row}>
             <Text style={styles.rank}>{MEDAL[index] ?? `${index + 1}`}</Text>
+            <Avatar name={item.username} size={28} />
             <Text style={styles.username} numberOfLines={1}>
               {item.username}
             </Text>
@@ -66,6 +68,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   rank: { width: 36, color: theme.gold, fontWeight: '900', fontSize: 16 },
-  username: { flex: 1, color: theme.text, fontWeight: '700', fontSize: 15, marginRight: 8 },
+  username: { flex: 1, color: theme.text, fontWeight: '700', fontSize: 15, marginLeft: 10, marginRight: 8 },
   amount: { color: theme.emerald, fontWeight: '900', fontSize: 16 },
 });

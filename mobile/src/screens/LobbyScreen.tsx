@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, RefreshControl, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
@@ -7,6 +7,7 @@ import { showAlert } from '../lib/alert';
 import { useAuth } from '../contexts/AuthContext';
 import { theme, money } from '../theme';
 import RegionGate from '../components/RegionGate';
+import Avatar from '../components/Avatar';
 import type { RootStackParamList } from '../types';
 
 type GameMode = 'original_escalator' | 'streak_saver' | 'milestone_booster';
@@ -35,6 +36,17 @@ const MODE_META: Record<GameMode, { label: string; tag: string }> = {
   milestone_booster: { label: 'Milestone Booster', tag: 'Flat tiers: Bronze→Platinum' },
 };
 
+type GamePlayer = { user_id: string; username: string; total_score: number; is_eliminated: boolean };
+
+type RecentWinner = {
+  user_id: string;
+  username: string;
+  amount_cents: number;
+  game_id: string;
+  mode: GameMode;
+  created_at: string;
+};
+
 // "2d 04h 12m" / "03:59" style countdown to a target ISO timestamp.
 function formatCountdown(targetIso: string | null, nowMs: number): string {
   if (!targetIso) return '';
@@ -55,20 +67,60 @@ export default function LobbyScreen() {
   const { signOut } = useAuth();
   const [games, setGames] = useState<Game[]>([]);
   const [balanceCents, setBalanceCents] = useState<number | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [signingUp, setSigningUp] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(Date.now());
+  const [gamePlayers, setGamePlayers] = useState<Record<string, GamePlayer[]>>({});
+  const [recentWinners, setRecentWinners] = useState<RecentWinner[]>([]);
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [suggestText, setSuggestText] = useState('');
+  const [suggestBusy, setSuggestBusy] = useState(false);
 
   const load = useCallback(async () => {
     setRefreshing(true);
-    const [{ data: gameData }, { data: comp }] = await Promise.all([
+    const [{ data: gameData }, { data: comp }, { data: winners }] = await Promise.all([
       supabase.rpc('list_lobby_games'),
       supabase.rpc('my_compliance_status'),
+      supabase.rpc('list_recent_winners', { p_limit: 15 }),
     ]);
-    if (gameData) setGames(gameData as unknown as Game[]);
+    const gamesTyped = (gameData as unknown as Game[]) ?? [];
+    setGames(gamesTyped);
     if (comp && typeof comp.walletBalanceCents === 'number') setBalanceCents(comp.walletBalanceCents);
+    if (comp && typeof comp.username === 'string') setUsername(comp.username);
+    if (winners) setRecentWinners(winners as RecentWinner[]);
+
+    // Who's signed up / playing - only for games worth showing a roster for.
+    const rosterGames = gamesTyped.filter((g) => g.status === 'registration' || g.status === 'active');
+    const rosters = await Promise.all(
+      rosterGames.map((g) => supabase.rpc('list_game_players', { p_game_id: g.game_id }))
+    );
+    setGamePlayers((prev) => {
+      const next = { ...prev };
+      rosterGames.forEach((g, i) => {
+        const rows = rosters[i].data as GamePlayer[] | null;
+        if (rows) next[g.game_id] = rows;
+      });
+      return next;
+    });
+
     setRefreshing(false);
   }, []);
+
+  async function submitSuggestion() {
+    setSuggestBusy(true);
+    try {
+      const { error } = await supabase.rpc('submit_topic_suggestion', { p_text: suggestText });
+      if (error) throw error;
+      setSuggestOpen(false);
+      setSuggestText('');
+      showAlert('Thanks!', "We'll take a look and may add it as a topic or question.");
+    } catch (err) {
+      showAlert('Could not submit', (err as Error).message);
+    } finally {
+      setSuggestBusy(false);
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -105,6 +157,28 @@ export default function LobbyScreen() {
     },
     [load]
   );
+
+  const renderRoster = (item: Game) => {
+    const players = gamePlayers[item.game_id];
+    if (!players || players.length === 0) return null;
+    const shown = players.slice(0, 5);
+    const extra = players.length - shown.length;
+    return (
+      <View style={styles.rosterRow}>
+        <View style={styles.rosterAvatars}>
+          {shown.map((p, i) => (
+            <View key={p.user_id} style={[styles.rosterAvatarWrap, { marginLeft: i === 0 ? 0 : -10, zIndex: shown.length - i }]}>
+              <Avatar name={p.username} size={26} />
+            </View>
+          ))}
+        </View>
+        <Text style={styles.rosterNames} numberOfLines={1}>
+          {shown.map((p) => p.username).join(', ')}
+          {extra > 0 ? ` +${extra} more` : ''}
+        </Text>
+      </View>
+    );
+  };
 
   const renderGameCard = (item: Game) => {
     const meta = MODE_META[item.mode];
@@ -148,6 +222,8 @@ export default function LobbyScreen() {
           </View>
         </View>
 
+        {renderRoster(item)}
+
         {showFooter && (
           <View style={styles.regFooter}>
             <Text style={styles.regMeta}>
@@ -190,7 +266,7 @@ export default function LobbyScreen() {
     <View style={styles.container}>
       {/* Top bar: avatar, unified Penny Wallet balance + quick deposit */}
       <View style={styles.topBar}>
-        <View style={styles.avatar} />
+        <Avatar name={username || '?'} size={36} />
         <Pressable style={styles.walletPill} onPress={() => navigation.navigate('Wallet')}>
           <Text style={styles.walletBalance}>{balanceCents == null ? '—' : money(balanceCents)}</Text>
           <View style={styles.plus}>
@@ -208,6 +284,22 @@ export default function LobbyScreen() {
       <Text style={styles.heading}>Games</Text>
 
       <RegionGate />
+
+      {recentWinners.length > 0 && (
+        <>
+          <Text style={styles.sectionHeading}>🏆 Recent Winners</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.winnersRow} contentContainerStyle={{ paddingRight: 12 }}>
+            {recentWinners.map((w, i) => (
+              <View key={`${w.game_id}-${w.user_id}-${i}`} style={styles.winnerChip}>
+                <Avatar name={w.username} size={22} />
+                <Text style={styles.winnerText}>
+                  <Text style={styles.winnerName}>{w.username}</Text> won {money(w.amount_cents)}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
+        </>
+      )}
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: 24 }}
@@ -228,15 +320,51 @@ export default function LobbyScreen() {
             {upcomingGames.map(renderGameCard)}
           </>
         )}
+
+        <Pressable style={styles.suggestBtn} onPress={() => setSuggestOpen(true)}>
+          <Text style={styles.suggestBtnText}>💡 Suggest a topic or question</Text>
+        </Pressable>
       </ScrollView>
+
+      <Modal visible={suggestOpen} transparent animationType="fade" onRequestClose={() => setSuggestOpen(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Suggest a topic or question</Text>
+            <Text style={styles.modalSub}>
+              Know a topic we should add, or have a question idea? Tell us and our team will review it.
+            </Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="e.g. 90s cartoons, or a full question idea…"
+              placeholderTextColor={theme.textMuted}
+              value={suggestText}
+              onChangeText={setSuggestText}
+              multiline
+              numberOfLines={4}
+              maxLength={500}
+            />
+            <View style={styles.modalRow}>
+              <Pressable style={styles.modalCancel} onPress={() => setSuggestOpen(false)} disabled={suggestBusy}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={styles.modalSubmit}
+                onPress={submitSuggestion}
+                disabled={suggestBusy || suggestText.trim().length < 3}
+              >
+                {suggestBusy ? <ActivityIndicator color={theme.bg} /> : <Text style={styles.modalSubmitText}>Submit</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 56, backgroundColor: theme.bg },
-  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: theme.surfaceAlt, marginRight: 12 },
+  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, gap: 12 },
   walletPill: {
     flex: 1,
     flexDirection: 'row',
@@ -253,8 +381,8 @@ const styles = StyleSheet.create({
   walletBalance: { color: theme.gold, fontSize: 18, fontWeight: '900' },
   plus: { width: 30, height: 30, borderRadius: 15, backgroundColor: theme.emerald, alignItems: 'center', justifyContent: 'center' },
   plusText: { color: theme.bg, fontSize: 22, fontWeight: '900', marginTop: -2 },
-  leaderboardLink: { fontSize: 22, marginLeft: 14 },
-  signOut: { color: theme.textMuted, marginLeft: 14, fontSize: 13 },
+  leaderboardLink: { fontSize: 22 },
+  signOut: { color: theme.textMuted, fontSize: 13 },
 
   heading: { color: theme.text, fontSize: 26, fontWeight: '900', marginBottom: 14 },
   sectionHeading: { color: theme.textMuted, fontSize: 13, fontWeight: '800', letterSpacing: 1, marginBottom: 10, marginTop: 4 },
@@ -313,4 +441,55 @@ const styles = StyleSheet.create({
   signedUpText: { color: theme.emerald, fontWeight: '800', fontSize: 13 },
 
   suddenDeath: { color: theme.crimson, fontWeight: '800', fontSize: 12, marginTop: 12, letterSpacing: 1 },
+
+  rosterRow: { flexDirection: 'row', alignItems: 'center', marginTop: 14 },
+  rosterAvatars: { flexDirection: 'row', marginRight: 8 },
+  rosterAvatarWrap: { borderWidth: 2, borderColor: theme.surface, borderRadius: 15 },
+  rosterNames: { color: theme.textMuted, fontSize: 12, fontWeight: '600', flex: 1 },
+
+  winnersRow: { marginTop: 4, marginBottom: 16 },
+  winnerChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.surface,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: theme.border,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginRight: 8,
+    gap: 8,
+  },
+  winnerText: { color: theme.textMuted, fontSize: 12, fontWeight: '600' },
+  winnerName: { color: theme.text, fontWeight: '800' },
+
+  suggestBtn: {
+    backgroundColor: theme.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.border,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  suggestBtnText: { color: theme.textMuted, fontWeight: '700', fontSize: 14 },
+
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', padding: 24 },
+  modalCard: { backgroundColor: theme.surface, borderRadius: 18, borderWidth: 1, borderColor: theme.border, padding: 20 },
+  modalTitle: { color: theme.text, fontSize: 18, fontWeight: '900', marginBottom: 6 },
+  modalSub: { color: theme.textMuted, fontSize: 13, marginBottom: 14 },
+  modalInput: {
+    backgroundColor: theme.surfaceAlt,
+    color: theme.text,
+    borderRadius: 10,
+    padding: 12,
+    minHeight: 90,
+    textAlignVertical: 'top',
+    marginBottom: 16,
+  },
+  modalRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
+  modalCancel: { paddingVertical: 12, paddingHorizontal: 16 },
+  modalCancelText: { color: theme.textMuted, fontWeight: '700' },
+  modalSubmit: { backgroundColor: theme.emerald, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 20, minWidth: 90, alignItems: 'center' },
+  modalSubmitText: { color: theme.bg, fontWeight: '900' },
 });
