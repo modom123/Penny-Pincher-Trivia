@@ -124,10 +124,19 @@ classification.]`
 top eligible finishers and the Operator retains **40%** as a platform fee. The **number of
 paid places scales with the size of the field**: small Contests pay the top 3–5 finishers,
 and large Contests pay approximately the **top 10% of entrants**, under a published payout
-schedule. The default small-field split is 50% / 30% / 20% to 1st / 2nd / 3rd. The
-applicable schedule and number of paid places for each Contest is shown before entry and
-set out in the Official Rules.
+schedule. The default small-field split is 50% / 30% / 20% to 1st / 2nd / 3rd. This scaling
+has no minimum finisher requirement - a Contest with as few as one eligible finisher at
+Round 100 pays that entrant the entire Prize Pool. The applicable schedule and number of
+paid places for each Contest is shown before entry and set out in the Official Rules.
 `[COUNSEL: confirm the payout schedule and any state-mandated prize-disclosure language.]`
+
+6.1.1. **No eligible finishers.** If a Contest reaches Round 100 with no eligible
+finishers (all entrants disqualified or unable to continue), its Prize Pool is not
+retained by the Operator and is not left unpaid - it carries forward into the starting
+Prize Pool of the next Contest created in the same Game Mode, composed solely of prior
+entrants' own Entry Fees. See the Official Rules. `[COUNSEL: confirm whether a
+carry-forward mechanic requires a time bound or a different disclosure treatment under
+target-state contest/unclaimed-property law.]`
 
 6.2. **Prize credit.** Prizes are credited to your Cash Balance.
 

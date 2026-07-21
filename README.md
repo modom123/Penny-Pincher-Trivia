@@ -118,6 +118,24 @@ Set at game creation (`games.mode` enum), same underlying engine for all three:
 starting at 10s, restricted to the tied players only) until scores diverge, then pays
 out for real. The game-engine's `--watch` mode runs this loop automatically.
 
+**How few finishers can a game pay out to?** The payout schedule scales down
+automatically with however many players are still eligible (not eliminated) at round
+100 - `payout_places_for`/`compute_payout_shares` gracefully handle a field of 1 (that
+player takes the entire pool) or 2 (split roughly 50/50). There's no hard "need 3"
+requirement in the payout math; `games.min_players` (default 3) only gates whether a
+game is allowed to *start*, not whether it can pay out.
+
+**Zero eligible finishers**: if every player is eliminated before round 100 (the
+engine always runs all 100 rounds regardless of how many are still alive), the game's
+entire prize pool is swept forward into the next game created in the *same mode*
+(`game_pool_rollovers` table, applied in `payout_game`/`create_game`) rather than
+sitting unpaid on a completed game forever. This only ever moves money players already
+contributed to a completed game's pool - never platform-funded, so it doesn't reopen
+the sweepstakes-classification question noted above for Milestone Booster's dropped
+platform bonus. See `20260721020000_sweep_unclaimed_pool_to_next_game.sql`; the
+Financials page's ledger reconciliation and the Games page (pending-rollover notice,
+force-payout sweep message) both account for it.
+
 ## Scoring
 
 Computed server-side in `submit_answer` (the server clock is authoritative, never the

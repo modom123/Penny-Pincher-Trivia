@@ -63,6 +63,7 @@ export default function GamesPage() {
   const [readySubjects, setReadySubjects] = useState<ReadySubject[]>([]);
   const [contestSubject, setContestSubject] = useState('');
   const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
+  const [pendingRollovers, setPendingRollovers] = useState<Record<string, number>>({});
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.from('games').select('*').order('created_at', { ascending: false });
@@ -77,6 +78,16 @@ export default function GamesPage() {
 
     const { data: subs } = await supabase.rpc('subjects_ready_for_contest');
     if (subs) setReadySubjects(subs as ReadySubject[]);
+
+    // Pools swept from a game that ended with zero eligible finishers (see
+    // 20260721020000_sweep_unclaimed_pool_to_next_game.sql), waiting to be claimed
+    // as a starting-pool boost by the next game created in that mode.
+    const { data: rollovers } = await supabase.from('game_pool_rollovers').select('mode, amount_cents').is('dest_game_id', null);
+    const byMode: Record<string, number> = {};
+    (rollovers ?? []).forEach((r: { mode: string; amount_cents: number }) => {
+      byMode[r.mode] = (byMode[r.mode] ?? 0) + r.amount_cents;
+    });
+    setPendingRollovers(byMode);
   }, []);
 
   async function publishContest() {
@@ -170,7 +181,9 @@ export default function GamesPage() {
       setMessage(
         data.status === 'sudden_death'
           ? `Tie detected at rank(s) ${data.tiedRanks.join(', ')} - game moved to Sudden Death Overtime instead of paying out.`
-          : 'Payout distributed.'
+          : data.poolSweptCents > 0
+            ? `No eligible finishers - $${(data.poolSweptCents / 100).toFixed(2)} pool swept forward to the next ${MODE_LABELS[games.find((g) => g.game_id === gameId)?.mode ?? 'original_escalator']} game created (see Financials).`
+            : 'Payout distributed.'
       );
       await load();
     } catch (err) {
@@ -271,6 +284,12 @@ export default function GamesPage() {
           <code>streak_bonus</code> (Financials page); Milestone Booster's treasure payout shows up as{' '}
           <code>milestone_bonus</code>.
         </p>
+        {pendingRollovers[newMode] > 0 && (
+          <p style={{ color: '#12E29A', fontSize: 13, marginTop: 0 }}>
+            💰 A previous {MODE_LABELS[newMode]} game ended with no eligible finishers — this new game will start
+            with a ${(pendingRollovers[newMode] / 100).toFixed(2)} pool boost swept forward from it.
+          </p>
+        )}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <select value={newMode} onChange={(e) => setNewMode(e.target.value as GameMode)} style={{ maxWidth: 240 }}>
             {(Object.keys(MODE_LABELS) as GameMode[]).map((m) => (

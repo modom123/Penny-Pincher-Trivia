@@ -27,6 +27,8 @@ type Reconciliation = {
   expectedPool: number;
   actualPool: number;
   payouts: number;
+  sweptOutCents: number;
+  sweptInCents: number;
   poolMatches: boolean;
   payoutMatches: boolean;
 };
@@ -87,23 +89,39 @@ export default function FinancialsPage() {
       const { data: games } = await supabase.from('games').select('*').in('status', ['active', 'completed']);
       const { data: statsRows } = await supabase.from('player_game_stats').select('game_id, total_cash_spent_cents');
       const { data: payoutRows } = await supabase.from('wallet_ledger').select('game_id, amount_cents').eq('entry_type', 'payout');
+      const { data: rolloverRows } = await supabase.from('game_pool_rollovers').select('source_game_id, dest_game_id, amount_cents');
 
       const sumBy = (rows: { game_id: string | null; amount_cents: number }[] | null, gameId: string) =>
         (rows ?? []).filter((r) => r.game_id === gameId).reduce((sum, r) => sum + Math.abs(r.amount_cents), 0);
       const sumCashBy = (rows: { game_id: string; total_cash_spent_cents: number }[] | null, gameId: string) =>
         (rows ?? []).filter((r) => r.game_id === gameId).reduce((sum, r) => sum + r.total_cash_spent_cents, 0);
+      const sumSweptOut = (gameId: string) =>
+        (rolloverRows ?? []).filter((r) => r.source_game_id === gameId).reduce((sum, r) => sum + r.amount_cents, 0);
+      const sumSweptIn = (gameId: string) =>
+        (rolloverRows ?? []).filter((r) => r.dest_game_id === gameId).reduce((sum, r) => sum + r.amount_cents, 0);
 
+      // A game with zero eligible finishers has its whole pool swept into the next
+      // game of the same mode (see 20260721020000_sweep_unclaimed_pool_to_next_game.sql)
+      // instead of sitting unpaid - so the source game's actual pool is now 0 (minus
+      // whatever it swept out) and the destination game's actual pool is boosted by
+      // whatever it swept in. Both sides are still "correct," they just no longer
+      // equal that single game's own cash-contributed total without this adjustment.
       const results: Reconciliation[] = ((games ?? []) as Game[]).map((g) => {
         const expectedPool = sumCashBy(statsRows, g.game_id);
         const payouts = sumBy(payoutRows, g.game_id);
         const actualPool = g.total_prize_pool_cents + g.admin_revenue_pool_cents;
+        const sweptOutCents = sumSweptOut(g.game_id);
+        const sweptInCents = sumSweptIn(g.game_id);
+        const adjustedExpectedPool = expectedPool - sweptOutCents + sweptInCents;
         return {
           gameId: g.game_id,
           status: g.status,
           expectedPool,
           actualPool,
           payouts,
-          poolMatches: expectedPool === actualPool,
+          sweptOutCents,
+          sweptInCents,
+          poolMatches: adjustedExpectedPool === actualPool,
           payoutMatches: g.status !== 'completed' || payouts === g.total_prize_pool_cents,
         };
       });
@@ -238,6 +256,7 @@ export default function FinancialsPage() {
                 <th>Cash Contributed</th>
                 <th>Pool + Cut</th>
                 <th>Payouts</th>
+                <th>Rollover</th>
                 <th>Result</th>
               </tr>
             </thead>
@@ -249,6 +268,11 @@ export default function FinancialsPage() {
                   <td>${(r.expectedPool / 100).toFixed(2)}</td>
                   <td>${(r.actualPool / 100).toFixed(2)}</td>
                   <td>{r.status === 'completed' ? `$${(r.payouts / 100).toFixed(2)}` : '-'}</td>
+                  <td style={{ color: '#9a9aa5', fontSize: 12 }}>
+                    {r.sweptOutCents > 0 && <div>swept out ${(r.sweptOutCents / 100).toFixed(2)} (no finishers)</div>}
+                    {r.sweptInCents > 0 && <div>swept in ${(r.sweptInCents / 100).toFixed(2)}</div>}
+                    {r.sweptOutCents === 0 && r.sweptInCents === 0 && '—'}
+                  </td>
                   <td>
                     {r.poolMatches && r.payoutMatches ? (
                       <span className="badge resolved">OK</span>

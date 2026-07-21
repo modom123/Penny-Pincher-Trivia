@@ -70,6 +70,21 @@ monetization model, without a definitive answer to this question per target stat
 - Live, shrinking-timer tiebreaker; flat entry fee per question (`[OPS: insert amount,
   e.g., $1.00]`) until the tie is resolved.
 
+### Minimum finishers and unclaimed pools (applies to all three modes)
+- The prize schedule scales down automatically to however many players remain
+  eligible at Round 100 - as few as one remaining eligible player receives the entire
+  prize pool. There is no minimum number of finishers required for a payout.
+- If **no** player remains eligible at Round 100 (all disqualified or unable to
+  continue), that game's entire prize pool is carried forward and added to the
+  starting pool of the next Contest created in the same Game Mode, rather than being
+  retained by the Sponsor or left undistributed. This carried-forward amount consists
+  solely of prior players' own entry fees - it is never Sponsor-funded - so it does
+  not change the funding-source analysis above. `[COUNSEL: confirm a "roll the prize
+  forward to the next contest" clause is compliant with target-state contest law,
+  particularly with respect to prize-disclosure and timely-award requirements - this
+  may need to be time-bounded (e.g., must be claimed within N days/contests) rather
+  than open-ended.]`
+
 ### Streak Bonus ("3 the Hard Way", applies to all three modes)
 - After three consecutive correct answers, and for every correct answer while that
   streak continues, the round's cost is credited back to the player's balance as
