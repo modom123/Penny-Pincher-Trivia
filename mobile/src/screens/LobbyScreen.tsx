@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, RefreshControl, Alert } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, RefreshControl } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
+import { showAlert } from '../lib/alert';
 import { useAuth } from '../contexts/AuthContext';
 import { theme, money } from '../theme';
 import RegionGate from '../components/RegionGate';
@@ -91,10 +92,10 @@ export default function LobbyScreen() {
       if (error) {
         // Surface the human-readable half of our coded errors (e.g. INSUFFICIENT_CASH: ...).
         const msg = error.message.includes(':') ? error.message.split(':').slice(1).join(':').trim() : error.message;
-        Alert.alert('Could not sign up', msg || error.message);
+        showAlert('Could not sign up', msg || error.message);
         return;
       }
-      Alert.alert(
+      showAlert(
         "You're in!",
         game.status === 'registration'
           ? `Entry paid: ${money(game.entry_fee_cents)}. You'll be ready when the game goes live.`

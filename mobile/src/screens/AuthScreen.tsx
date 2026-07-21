@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, Alert, Image, Platform } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, Image, Platform } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import { showAlert } from '../lib/alert';
 import { theme } from '../theme';
 
 export default function AuthScreen() {
@@ -16,13 +17,13 @@ export default function AuthScreen() {
     try {
       if (mode === 'signUp') {
         await signUp(email, password, username);
-        Alert.alert('Check your email', 'Confirm your account, then sign in.');
+        showAlert('Check your email', 'Confirm your account, then sign in.');
         setMode('signIn');
       } else {
         await signIn(email, password);
       }
     } catch (err) {
-      Alert.alert('Error', (err as Error).message);
+      showAlert('Error', (err as Error).message);
     } finally {
       setBusy(false);
     }
@@ -78,7 +79,7 @@ export default function AuthScreen() {
               try {
                 await signInWithGoogle();
               } catch (err) {
-                Alert.alert('Google sign-in unavailable', (err as Error).message);
+                showAlert('Google sign-in unavailable', (err as Error).message);
               }
             }}
           >

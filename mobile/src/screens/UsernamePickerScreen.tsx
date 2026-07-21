@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { showAlert } from '../lib/alert';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme';
 
@@ -19,7 +20,7 @@ export default function UsernamePickerScreen() {
       if (error) throw error;
       await refreshUsername();
     } catch (err) {
-      Alert.alert('Try another name', (err as Error).message.replace(/^[A-Z_]+:\s*/, ''));
+      showAlert('Try another name', (err as Error).message.replace(/^[A-Z_]+:\s*/, ''));
     } finally {
       setBusy(false);
     }

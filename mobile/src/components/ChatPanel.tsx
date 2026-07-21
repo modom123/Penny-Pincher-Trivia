@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, Pressable, FlatList, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, Pressable, FlatList, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { showAlert } from '../lib/alert';
 import { theme } from '../theme';
 import type { ChatMessage } from '../types';
 
@@ -58,7 +59,7 @@ export default function ChatPanel({ gameId }: { gameId: string }) {
     const { error } = await supabase.rpc('post_chat_message', { p_game_id: gameId, p_body: body });
     if (error) {
       setText(body);
-      Alert.alert('Message not sent', error.message.replace(/^[A-Z_]+:\s*/, ''));
+      showAlert('Message not sent', error.message.replace(/^[A-Z_]+:\s*/, ''));
     }
     setSending(false);
   }

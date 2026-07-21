@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, Image, Pressable, StyleSheet, Alert, ActivityIndicator, ScrollView, TextInput, Platform, Linking } from 'react-native';
+import { View, Text, Image, Pressable, StyleSheet, ActivityIndicator, ScrollView, TextInput, Platform, Linking } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
+import { showAlert } from '../lib/alert';
 import { theme } from '../theme';
 
 const isWeb = Platform.OS === 'web';
@@ -49,7 +50,7 @@ export default function WalletScreen() {
   const load = useCallback(async () => {
     const { data, error } = await supabase.rpc('my_compliance_status');
     if (error) {
-      Alert.alert('Error loading wallet', error.message);
+      showAlert('Error loading wallet', error.message);
       return;
     }
     setCompliance(data as Compliance);
@@ -101,7 +102,7 @@ export default function WalletScreen() {
       // leg above (or a focus refresh on desktop) syncs the balance back.
       openUrl(data.checkoutUrl);
     } catch (err) {
-      Alert.alert('Checkout failed', (err as Error).message);
+      showAlert('Checkout failed', (err as Error).message);
     } finally {
       setBusy(false);
     }
@@ -114,7 +115,7 @@ export default function WalletScreen() {
       if (error) throw error;
       openUrl(data.url);
     } catch (err) {
-      Alert.alert('Could not start onboarding', (err as Error).message);
+      showAlert('Could not start onboarding', (err as Error).message);
     } finally {
       setBusy(false);
     }
@@ -127,7 +128,7 @@ export default function WalletScreen() {
       if (error) throw error;
       openUrl(data.url);
     } catch (err) {
-      Alert.alert('Could not start verification', (err as Error).message);
+      showAlert('Could not start verification', (err as Error).message);
     } finally {
       setBusy(false);
     }
@@ -136,19 +137,19 @@ export default function WalletScreen() {
   async function withdraw() {
     const cents = Math.round(parseFloat(withdrawAmount) * 100);
     if (!Number.isInteger(cents) || cents <= 0) {
-      Alert.alert('Invalid amount', 'Enter a positive dollar amount.');
+      showAlert('Invalid amount', 'Enter a positive dollar amount.');
       return;
     }
     setBusy(true);
     try {
       const { error } = await supabase.functions.invoke('withdraw', { body: { cents } });
       if (error) throw error;
-      Alert.alert('Withdrawal requested', 'Your payout is on its way.');
+      showAlert('Withdrawal requested', 'Your payout is on its way.');
       setWithdrawAmount('');
       await load();
     } catch (err) {
       // Surface the specific compliance gate the server enforced.
-      Alert.alert('Withdrawal blocked', (err as Error).message);
+      showAlert('Withdrawal blocked', (err as Error).message);
       await load();
     } finally {
       setBusy(false);
@@ -176,7 +177,7 @@ export default function WalletScreen() {
       if (error) throw error;
       await load();
     } catch (err) {
-      Alert.alert('Dev credit failed', (err as Error).message);
+      showAlert('Dev credit failed', (err as Error).message);
     } finally {
       setBusy(false);
     }

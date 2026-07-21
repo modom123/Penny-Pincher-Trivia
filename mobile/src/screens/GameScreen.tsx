@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Alert, Animated, ScrollView, Image } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Animated, ScrollView, Image } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
+import { showAlert } from '../lib/alert';
 import { getVerifiedLocationToken } from '../lib/radar';
 import { theme, money } from '../theme';
 import ChatPanel from '../components/ChatPanel';
@@ -78,7 +79,7 @@ export default function GameScreen({ route, navigation }: Props) {
     if (!round || selected || phase !== 'open') return;
     const { data, error } = await supabase.rpc('skip_round', { p_game_id: gameId, p_round_number: round.roundNumber });
     if (error) {
-      Alert.alert("Couldn't skip", error.message.replace(/^[A-Z_]+:\s*/, ''));
+      showAlert("Couldn't skip", error.message.replace(/^[A-Z_]+:\s*/, ''));
       return;
     }
     setPhase('answered');
@@ -112,7 +113,7 @@ export default function GameScreen({ route, navigation }: Props) {
         navigation.replace('Results', { payload: payload as GameCompletedPayload });
       })
       .on('broadcast', { event: 'game:error' }, ({ payload }) => {
-        Alert.alert('Game error', (payload as { error: string }).error);
+        showAlert('Game error', (payload as { error: string }).error);
       })
       .subscribe();
 
@@ -187,17 +188,17 @@ export default function GameScreen({ route, navigation }: Props) {
     const { data, error } = await supabase.rpc('buy_round', { p_game_id: gameId, p_round_number: round.roundNumber });
     if (error) {
       if (error.message.includes('TOP_UP_REQUIRED')) {
-        Alert.alert('Top up to continue', "You don't have enough tokens for this round. Add funds to keep playing.", [
+        showAlert('Top up to continue', "You don't have enough tokens for this round. Add funds to keep playing.", [
           { text: 'Not now', style: 'cancel' },
           { text: 'Go to Wallet', onPress: () => navigation.navigate('Wallet') },
         ]);
       } else {
-        Alert.alert("Couldn't buy round", error.message.replace(/^[A-Z_]+:\s*/, ''));
+        showAlert("Couldn't buy round", error.message.replace(/^[A-Z_]+:\s*/, ''));
       }
       return;
     }
     if (data?.gameOver) {
-      Alert.alert('Game over', data.message, [{ text: 'OK', onPress: () => navigation.replace('Lobby') }]);
+      showAlert('Game over', data.message, [{ text: 'OK', onPress: () => navigation.replace('Lobby') }]);
       return;
     }
     setStreakFree(Boolean(data?.streakFree));
@@ -215,7 +216,7 @@ export default function GameScreen({ route, navigation }: Props) {
     });
     if (error) {
       setSelected(null);
-      Alert.alert("Couldn't submit answer", error.message);
+      showAlert("Couldn't submit answer", error.message);
       return;
     }
     setPhase('answered');
