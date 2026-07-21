@@ -292,6 +292,7 @@ export default function LobbyScreen() {
               <>
                 <Text style={styles.roundLabelSm}>STARTS IN</Text>
                 <Text style={styles.countdown}>{formatCountdown(item.scheduled_start_at, nowMs)}</Text>
+                <Text style={styles.roundNote}>Still open - join anytime!</Text>
               </>
             ) : isRegistration ? (
               <>
@@ -573,6 +574,7 @@ const styles = StyleSheet.create({
   roundText: { color: theme.text, fontWeight: '700', fontSize: 13 },
   roundLabelSm: { color: theme.textMuted, fontSize: 9, fontWeight: '800', letterSpacing: 1.2 },
   countdown: { color: theme.text, fontWeight: '900', fontSize: 15, marginTop: 2, fontVariant: ['tabular-nums'] },
+  roundNote: { color: theme.emerald, fontSize: 9, fontWeight: '700', marginTop: 2 },
 
   regFooter: {
     flexDirection: 'row',
