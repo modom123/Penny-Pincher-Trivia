@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, RefreshControl, Modal, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, Image, ScrollView, Pressable, StyleSheet, RefreshControl, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
@@ -324,6 +324,17 @@ export default function LobbyScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Brand lockup - same mark + two-tone wordmark as the website header,
+          so the Lobby (the first screen after sign-in) still reads as
+          Penny Pinching Trivia instead of a generic games list. */}
+      <View style={styles.brandRow}>
+        <Image source={require('../../assets/favicon.png')} style={styles.brandMark} resizeMode="contain" />
+        <Text style={styles.brandWordmark}>
+          <Text style={styles.brandPenny}>Penny</Text>
+          <Text style={styles.brandPinch}>Pinching</Text>
+        </Text>
+      </View>
+
       {/* Top bar: avatar, unified Penny Wallet balance + quick deposit */}
       <View style={styles.topBar}>
         <Avatar name={username || '?'} size={36} />
@@ -430,6 +441,11 @@ export default function LobbyScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 56, backgroundColor: theme.bg },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  brandMark: { width: 22, height: 22, borderRadius: 6 },
+  brandWordmark: { fontSize: 15, fontWeight: '800', letterSpacing: 0.2 },
+  brandPenny: { color: theme.pink },
+  brandPinch: { color: theme.gold, marginLeft: 2 },
   topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, gap: 12 },
   walletPill: {
     flex: 1,
