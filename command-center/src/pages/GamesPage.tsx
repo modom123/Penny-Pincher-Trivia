@@ -50,6 +50,16 @@ type ReadySubject = {
 type GamePlayer = { user_id: string; username: string; total_score: number; is_eliminated: boolean };
 type ClientLookup = { client_number: number; email: string };
 
+type EditForm = {
+  mode: GameMode;
+  payoutScheme: PayoutScheme;
+  roundSeconds: number;
+  minBuyIn: string;
+  maxBuyIn: string;
+  reupCutoff: number;
+  minPlayers: number;
+};
+
 export default function GamesPage() {
   const [games, setGames] = useState<Game[]>([]);
   const [newMode, setNewMode] = useState<GameMode>('original_escalator');
@@ -70,6 +80,8 @@ export default function GamesPage() {
   const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
   const [rosters, setRosters] = useState<Record<string, GamePlayer[]>>({});
   const [rosterLoading, setRosterLoading] = useState<string | null>(null);
+  const [editingGameId, setEditingGameId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<EditForm | null>(null);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.from('games').select('*').order('created_at', { ascending: false });
@@ -191,6 +203,51 @@ export default function GamesPage() {
     }
   }
 
+  function startEdit(g: Game) {
+    setExpandedGameId(null);
+    setEditingGameId(g.game_id);
+    setEditForm({
+      mode: g.mode,
+      payoutScheme: g.payout_scheme,
+      roundSeconds: g.round_seconds ?? 12,
+      minBuyIn: g.min_buy_in_tokens != null ? String(g.min_buy_in_tokens) : '',
+      maxBuyIn: g.max_buy_in_tokens != null ? String(g.max_buy_in_tokens) : '',
+      reupCutoff: g.reup_cutoff_round ?? 30,
+      minPlayers: g.min_players ?? 3,
+    });
+  }
+
+  function cancelEdit() {
+    setEditingGameId(null);
+    setEditForm(null);
+  }
+
+  async function saveEdit(gameId: string) {
+    if (!editForm) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const { error } = await supabase.rpc('admin_update_game', {
+        p_game_id: gameId,
+        p_mode: editForm.mode,
+        p_payout_scheme: editForm.payoutScheme,
+        p_round_seconds: editForm.roundSeconds,
+        p_min_buy_in_tokens: editForm.minBuyIn === '' ? null : Number(editForm.minBuyIn),
+        p_max_buy_in_tokens: editForm.maxBuyIn === '' ? null : Number(editForm.maxBuyIn),
+        p_reup_cutoff_round: editForm.reupCutoff,
+        p_min_players: editForm.minPlayers,
+      });
+      if (error) throw error;
+      setMessage('Game updated.');
+      cancelEdit();
+      await load();
+    } catch (err) {
+      setMessage(`Error: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function forcePayout(gameId: string) {
     if (!confirm('Force payout for this game now? This is irreversible.')) return;
     setBusy(true);
@@ -261,12 +318,34 @@ export default function GamesPage() {
     }
   }
 
+  const inPlayCents = games
+    .filter((g) => g.status === 'registration' || g.status === 'active')
+    .reduce((sum, g) => sum + g.total_prize_pool_cents + g.admin_revenue_pool_cents, 0);
+  const liveCount = games.filter((g) => g.status === 'active').length;
+  const awaitingLaunchCount = games.filter((g) => g.status === 'draft' || g.status === 'registration').length;
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <h2>Games</h2>
         <EngineStatus />
       </div>
+
+      <div className="stat-grid" style={{ marginBottom: 20 }}>
+        <div className="stat gold">
+          <div className="label">💰 In Play Right Now</div>
+          <div className="value">${(inPlayCents / 100).toFixed(2)}</div>
+        </div>
+        <div className="stat">
+          <div className="label">🔴 Live Tournaments</div>
+          <div className="value">{liveCount}</div>
+        </div>
+        <div className="stat blue">
+          <div className="label">⏱ Awaiting Launch</div>
+          <div className="value">{awaitingLaunchCount}</div>
+        </div>
+      </div>
+
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Create a game</h3>
         <p style={{ color: '#9a9aa5', fontSize: 13, marginTop: 0 }}>
@@ -400,8 +479,7 @@ export default function GamesPage() {
               <th>Starts</th>
               <th>Status</th>
               <th>Round</th>
-              <th>Prize Pool</th>
-              <th>Platform Cut</th>
+              <th>💰 Prize Pool</th>
               <th>Created</th>
               <th></th>
             </tr>
@@ -437,16 +515,25 @@ export default function GamesPage() {
                       : 'Waiting for players'}
                 </td>
                 <td>
-                  {g.status}
+                  <span className={`badge status-${g.status}`}>{g.status}</span>
                   {g.in_sudden_death && <span className="badge open" style={{ marginLeft: 6 }}>SUDDEN DEATH</span>}
                 </td>
                 <td>
                   {g.current_round} / {g.total_rounds}
                 </td>
-                <td>${(g.total_prize_pool_cents / 100).toFixed(2)}</td>
-                <td>${(g.admin_revenue_pool_cents / 100).toFixed(2)}</td>
+                <td>
+                  <span className="money-chip">
+                    ${(g.total_prize_pool_cents / 100).toFixed(2)}
+                    <span className="cut">+${(g.admin_revenue_pool_cents / 100).toFixed(2)} cut</span>
+                  </span>
+                </td>
                 <td>{new Date(g.created_at).toLocaleString()}</td>
-                <td style={{ display: 'flex', gap: 6 }}>
+                <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {(g.status === 'draft' || g.status === 'registration') && (
+                    <button className="secondary" onClick={() => startEdit(g)} disabled={busy}>
+                      ✏️ Edit
+                    </button>
+                  )}
                   {g.status === 'draft' && (
                     <>
                       <button onClick={() => approveGame(g.game_id)} disabled={busy}>
@@ -484,9 +571,88 @@ export default function GamesPage() {
                   )}
                 </td>
               </tr>
+              {editingGameId === g.game_id && editForm && (
+                <tr>
+                  <td colSpan={13} style={{ background: '#0f1320' }}>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', padding: '10px 2px' }}>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#9a9aa5' }}>
+                        Mode {(playerCounts[g.game_id] ?? 0) > 0 && '(locked - players signed up)'}
+                        <select
+                          value={editForm.mode}
+                          disabled={(playerCounts[g.game_id] ?? 0) > 0}
+                          onChange={(e) => setEditForm({ ...editForm, mode: e.target.value as GameMode })}
+                          style={{ maxWidth: 220 }}
+                        >
+                          {(Object.keys(MODE_LABELS) as GameMode[]).map((m) => (
+                            <option key={m} value={m}>{MODE_LABELS[m]}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#9a9aa5' }}>
+                        Payout scheme
+                        <select
+                          value={editForm.payoutScheme}
+                          onChange={(e) => setEditForm({ ...editForm, payoutScheme: e.target.value as PayoutScheme })}
+                          style={{ maxWidth: 240 }}
+                        >
+                          {(Object.keys(SCHEME_LABELS) as PayoutScheme[]).map((s) => (
+                            <option key={s} value={s}>{SCHEME_LABELS[s]}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#9a9aa5' }}>
+                        Timer
+                        <select
+                          value={editForm.roundSeconds}
+                          onChange={(e) => setEditForm({ ...editForm, roundSeconds: Number(e.target.value) })}
+                          style={{ maxWidth: 150 }}
+                        >
+                          {[8, 10, 12, 15].map((s) => (
+                            <option key={s} value={s}>{s}s per question</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#9a9aa5' }}>
+                        Min buy-in
+                        <input
+                          type="number" min={0} placeholder="No minimum" value={editForm.minBuyIn}
+                          onChange={(e) => setEditForm({ ...editForm, minBuyIn: e.target.value })}
+                          style={{ width: 130 }}
+                        />
+                      </label>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#9a9aa5' }}>
+                        Max buy-in
+                        <input
+                          type="number" min={0} placeholder="No maximum" value={editForm.maxBuyIn}
+                          onChange={(e) => setEditForm({ ...editForm, maxBuyIn: e.target.value })}
+                          style={{ width: 130 }}
+                        />
+                      </label>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#9a9aa5' }}>
+                        Re-up cutoff
+                        <input
+                          type="number" min={1} max={100} value={editForm.reupCutoff}
+                          onChange={(e) => setEditForm({ ...editForm, reupCutoff: Number(e.target.value) })}
+                          style={{ width: 110 }}
+                        />
+                      </label>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#9a9aa5' }}>
+                        Min players {(playerCounts[g.game_id] ?? 0) > 0 && `(≥ ${playerCounts[g.game_id]} signed up)`}
+                        <input
+                          type="number" min={playerCounts[g.game_id] ?? 1} value={editForm.minPlayers}
+                          onChange={(e) => setEditForm({ ...editForm, minPlayers: Number(e.target.value) })}
+                          style={{ width: 110 }}
+                        />
+                      </label>
+                      <button onClick={() => saveEdit(g.game_id)} disabled={busy}>💾 Save changes</button>
+                      <button className="secondary" onClick={cancelEdit} disabled={busy}>Cancel</button>
+                    </div>
+                  </td>
+                </tr>
+              )}
               {expandedGameId === g.game_id && (
                 <tr>
-                  <td colSpan={14} style={{ background: '#16161d' }}>
+                  <td colSpan={13} style={{ background: '#16161d' }}>
                     {rosterLoading === g.game_id ? (
                       <span style={{ color: '#9a9aa5' }}>Loading roster...</span>
                     ) : (rosters[g.game_id] ?? []).length === 0 ? (
@@ -524,7 +690,7 @@ export default function GamesPage() {
             ))}
             {games.length === 0 && (
               <tr>
-                <td colSpan={14}>No games yet.</td>
+                <td colSpan={13}>No games yet.</td>
               </tr>
             )}
           </tbody>

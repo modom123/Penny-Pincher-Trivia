@@ -19,7 +19,13 @@ export default function Layout() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <h1>Penny Watcher</h1>
+        <div className="brand">
+          <img src="/logo.png" alt="Penny Pinching Trivia" />
+          <div className="brand-text">
+            <strong>Penny Watcher</strong>
+            <span>COMMAND CENTER</span>
+          </div>
+        </div>
         <nav>
           {LINKS.map((link) => (
             <NavLink key={link.to} to={link.to} className={({ isActive }) => (isActive ? 'active' : '')}>
