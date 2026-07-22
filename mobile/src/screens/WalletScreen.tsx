@@ -27,8 +27,10 @@ type Compliance = {
   walletBalanceCents: number;
   promoBalanceCents: number;
   withdrawableCents: number;
+  paymentProcessor: 'stripe' | 'trustly';
   stripeConnectLinked: boolean;
   stripeConnectPayoutsEnabled: boolean;
+  trustlyLinked: boolean;
 };
 
 // Web: navigate the current tab/window. Native: hand off to the OS browser.
@@ -76,12 +78,28 @@ export default function WalletScreen() {
   // Returning from a Stripe-hosted flow on web (checkout, Connect onboarding,
   // or Identity verification): the result is applied asynchronously by
   // stripe-webhook, so poll a couple of times to pick it up, then clean the URL.
-  const RETURN_PATHS = ['/wallet/success', '/wallet/connect-return', '/wallet/identity-return'];
+  const RETURN_PATHS = ['/wallet/success', '/wallet/connect-return', '/wallet/identity-return', '/wallet/trustly-return'];
   useEffect(() => {
     if (!isWeb || typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const matchedPath = RETURN_PATHS.find((p) => window.location.pathname.includes(p));
     if (!params.get('session_id') && !matchedPath) return;
+
+    // Trustly's return leg carries the new bank-authorization's transactionId
+    // as a query param - unlike Stripe, nothing has confirmed it server-side
+    // yet, so this call (not just a wallet reload) is what actually links it.
+    // See trustly-confirm-bank-auth for why it re-checks status with Trustly
+    // rather than trusting this param at face value.
+    const transactionId = params.get('transactionId');
+    if (window.location.pathname.includes('/wallet/trustly-return') && transactionId) {
+      supabase.functions
+        .invoke('trustly-confirm-bank-auth', { body: { transactionId } })
+        .then(({ error }) => {
+          if (error) edgeFunctionErrorMessage(error).then((msg) => showAlert('Could not link bank account', msg));
+        })
+        .finally(load);
+    }
+
     let tries = 0;
     const iv = setInterval(async () => {
       tries += 1;
@@ -93,14 +111,30 @@ export default function WalletScreen() {
   }, [load]);
 
   async function buyBundle(bundleId: string) {
+    if (compliance?.paymentProcessor === 'trustly' && !compliance.trustlyLinked) {
+      showAlert('Link a bank account first', 'Link your bank account below, then come back to buy tokens.');
+      return;
+    }
     setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', { body: { bundleId } });
+      // Which processor funds a purchase is a platform-wide switch
+      // (platform_config.payment_processor), not a per-player choice - both
+      // functions return the same shape ({ checkoutUrl } / a pending status),
+      // credited the same way once their respective webhook confirms it.
+      const fn = compliance?.paymentProcessor === 'trustly' ? 'trustly-create-deposit' : 'create-checkout-session';
+      const { data, error } = await supabase.functions.invoke(fn, { body: { bundleId } });
       if (error) throw error;
-      // Web-to-app funding (the launch playbook's "payment loophole"): send the
-      // player to Stripe Checkout; the webhook credits the wallet and the return
-      // leg above (or a focus refresh on desktop) syncs the balance back.
-      openUrl(data.checkoutUrl);
+      if (data.checkoutUrl) {
+        // Web-to-app funding (the launch playbook's "payment loophole"): send
+        // the player to Stripe Checkout; the webhook credits the wallet and
+        // the return leg above (or a focus refresh on desktop) syncs it back.
+        openUrl(data.checkoutUrl);
+      } else {
+        // Trustly pulls from an already-authorized bank account - there's no
+        // hosted page to redirect to, just a pending capture to poll for.
+        showAlert('Purchase submitted', "We're processing your bank transfer - your tokens will appear once it clears.");
+        await load();
+      }
     } catch (err) {
       showAlert('Checkout failed', await edgeFunctionErrorMessage(err));
     } finally {
@@ -116,6 +150,19 @@ export default function WalletScreen() {
       openUrl(data.url);
     } catch (err) {
       showAlert('Could not start onboarding', await edgeFunctionErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function linkBankAccount() {
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('trustly-establish-bank-auth');
+      if (error) throw error;
+      openUrl(data.url);
+    } catch (err) {
+      showAlert('Could not start bank linking', await edgeFunctionErrorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -185,9 +232,8 @@ export default function WalletScreen() {
 
   const c = compliance;
   const nearTaxThreshold = c ? c.lifetimeWinningsCents >= c.taxThresholdCents && !c.taxDetailsConfirmed : false;
-  const canWithdraw = c
-    ? c.kycStatus === 'verified' && c.isAdult && !nearTaxThreshold && c.stripeConnectPayoutsEnabled
-    : false;
+  const payoutAccountReady = c ? (c.paymentProcessor === 'trustly' ? c.trustlyLinked : c.stripeConnectPayoutsEnabled) : false;
+  const canWithdraw = c ? c.kycStatus === 'verified' && c.isAdult && !nearTaxThreshold && payoutAccountReady : false;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -211,6 +257,15 @@ export default function WalletScreen() {
         <Text style={styles.splitNote}>
           Bonus tokens play just like cash, but only your cash balance can be withdrawn.
         </Text>
+      )}
+
+      {c !== null && c.paymentProcessor === 'trustly' && !c.trustlyLinked && (
+        <View style={styles.notice}>
+          <Text style={styles.noticeText}>Link a bank account to buy tokens - Penny Pinching Trivia pays by bank transfer.</Text>
+          <Pressable style={styles.smallButton} onPress={linkBankAccount} disabled={busy}>
+            <Text style={styles.buttonText}>Link bank account</Text>
+          </Pressable>
+        </View>
       )}
 
       {BUNDLES.map((bundle) => (
@@ -255,7 +310,15 @@ export default function WalletScreen() {
           <Text style={styles.noticeText}>You must be at least 18 years old to withdraw winnings.</Text>
         </View>
       )}
-      {c && c.kycStatus === 'verified' && c.isAdult && !c.stripeConnectPayoutsEnabled && (
+      {c && c.kycStatus === 'verified' && c.isAdult && !payoutAccountReady && c.paymentProcessor === 'trustly' && (
+        <View style={styles.notice}>
+          <Text style={styles.noticeText}>Link a bank account to buy tokens and withdraw - Penny Pinching Trivia pays and collects directly from your bank.</Text>
+          <Pressable style={styles.smallButton} onPress={linkBankAccount} disabled={busy}>
+            <Text style={styles.buttonText}>Link bank account</Text>
+          </Pressable>
+        </View>
+      )}
+      {c && c.kycStatus === 'verified' && c.isAdult && !payoutAccountReady && c.paymentProcessor !== 'trustly' && (
         <View style={styles.notice}>
           <Text style={styles.noticeText}>
             {c.stripeConnectLinked
