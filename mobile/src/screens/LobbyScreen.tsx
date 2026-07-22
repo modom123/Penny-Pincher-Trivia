@@ -11,6 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { theme, money } from '../theme';
 import RegionGate from '../components/RegionGate';
 import Avatar from '../components/Avatar';
+import RulesModal from '../components/RulesModal';
 import type { RootStackParamList, MainTabParamList } from '../types';
 
 type LobbyNavigationProp = CompositeNavigationProp<
@@ -117,6 +118,7 @@ export default function LobbyScreen() {
   const [gamePlayers, setGamePlayers] = useState<Record<string, GamePlayer[]>>({});
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [suggestText, setSuggestText] = useState('');
   const [suggestBusy, setSuggestBusy] = useState(false);
@@ -384,9 +386,14 @@ export default function LobbyScreen() {
             </View>
           )}
         </View>
-        <Pressable onPress={() => setSuggestOpen(true)}>
-          <Text style={styles.suggestLink}>💡 Suggest a topic</Text>
-        </Pressable>
+        <View style={styles.headingLinks}>
+          <Pressable onPress={() => setRulesOpen(true)}>
+            <Text style={styles.suggestLink}>📖 How it works</Text>
+          </Pressable>
+          <Pressable onPress={() => setSuggestOpen(true)}>
+            <Text style={styles.suggestLink}>💡 Suggest a topic</Text>
+          </Pressable>
+        </View>
       </View>
 
       <RegionGate />
@@ -488,6 +495,8 @@ export default function LobbyScreen() {
           </View>
         </View>
       </Modal>
+
+      <RulesModal visible={rulesOpen} onClose={() => setRulesOpen(false)} />
     </View>
   );
 }
@@ -534,6 +543,7 @@ const styles = StyleSheet.create({
   },
   onlineDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: theme.emerald },
   onlinePillText: { color: theme.textMuted, fontSize: 12, fontWeight: '700' },
+  headingLinks: { alignItems: 'flex-end', gap: 4 },
   suggestLink: { color: theme.textMuted, fontSize: 13, fontWeight: '700' },
   sectionHeading: { color: theme.textMuted, fontSize: 13, fontWeight: '800', letterSpacing: 1, marginBottom: 10, marginTop: 4 },
   empty: { color: theme.textMuted, textAlign: 'center', marginTop: 48 },
