@@ -73,15 +73,16 @@ Vercel verify + issue the TLS cert. Propagation is usually minutes.
 > three-project split above is simpler, isolates failures, and lets each app
 > deploy on its own. Recommended unless you have a specific reason to unify.
 
-## Post-deploy wiring (Stripe redirect)
+## Post-deploy wiring (Trustly redirect)
 
-Once the **player app** has a real origin, point Stripe's return URLs at it so
-checkout sends players back into the app:
+Once the **player app** has a real origin, point Trustly's hosted-flow return
+URL at it so bank authorization sends players back into the app:
 
 - In **Supabase → Project Settings → Edge Functions → Secrets**, set
   `APP_PUBLIC_URL` = `https://play.pennypinchingtrivia.com` (or whatever origin
-  you gave the player app), then redeploy the `create-checkout-session` function.
-- Add that same origin to your **Stripe** allowed redirect/checkout domains.
+  you gave the player app), then redeploy the `trustly-establish-bank-auth`
+  function.
+- Add that same origin to your **Trustly** dashboard's allowed return-URL domains.
 
 See the root `README.md` ("Web MVP soft launch deployment") for the broader
 launch checklist (geo-fence, KYC, etc.).

@@ -8,11 +8,13 @@ instrument.]`
 ## Data We Collect
 
 - **Account data**: email, username, password (hashed via Supabase Auth), and, once
-  identity verification is required for withdrawal, government ID and address data
-  (processed by Stripe/our KYC provider - `[OPS: confirm we do not store raw ID images
-  ourselves; confirm data retention period with that provider]`).
-- **Payment data**: processed by Stripe; we store Stripe customer/connect account
-  identifiers, not raw card numbers.
+  identity verification is required for withdrawal, your legal name, date of birth, and
+  address as verified through your linked bank account (processed by Trustly, our
+  payments and identity provider - `[OPS: confirm we do not store raw bank credentials
+  ourselves; confirm data retention period with Trustly]`).
+- **Payment data**: processed by Trustly via direct bank transfer; we store a Trustly
+  transaction/authorization reference, not your bank login credentials or account
+  number.
 - **Gameplay data**: answers, response timing (down to the millisecond, for scoring and
   anti-cheat purposes), scores, and wallet ledger entries.
 - **Device/location data**: `[OPS: once geolocation/geofencing is built per
@@ -30,7 +32,7 @@ instrument.]`
 
 ## Data Sharing
 
-- **Stripe** (payments, identity verification, payouts) - `[OPS: link Stripe's own
+- **Trustly** (payments, identity verification, payouts) - `[OPS: link Trustly's own
   privacy policy as a sub-processor disclosure.]`
 - **Supabase** (database, authentication, hosting) - `[OPS: link Supabase's privacy
   policy/DPA as a sub-processor disclosure.]`

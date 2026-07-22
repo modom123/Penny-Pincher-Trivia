@@ -9,9 +9,11 @@ and 40+ pays roughly the top 10%.
 > **Heads up:** this is a real-money pay-to-play contest with pooled entry fees and a
 > cash payout to winners. That's a legally operable model in much of the US (similar to
 > daily-fantasy-sports/skill-contest platforms), but it carries real compliance weight -
-> money transmitter licensing, state-by-state skill-game restrictions, Stripe's
-> gambling-adjacent use policies, and KYC on withdrawals. Get this reviewed by a lawyer
-> before it goes live with real users and real money.
+> money transmitter licensing, state-by-state skill-game restrictions, payment
+> processors' gambling-adjacent use policies (Stripe classified this account as a
+> restricted business, which is why payments run through Trustly's bank-to-bank rail
+> instead - see `legal/00-READ-ME-FIRST.md`), and KYC on withdrawals. Get this reviewed
+> by a lawyer before it goes live with real users and real money.
 
 ## Architecture
 
@@ -27,17 +29,18 @@ and 40+ pays roughly the top 10%.
   the ~30 minutes a full 100-round game takes. It calls `start_round`/`end_round`/
   `payout_game` and broadcasts the results over a Supabase Realtime channel
   (`game:{gameId}`) that clients subscribe to.
-- **Edge Functions** (`supabase/functions/`): Stripe checkout session creation, the
-  Stripe webhook (credits wallets on payment), withdrawals (Stripe Connect payout), and
-  admin game creation.
+- **Edge Functions** (`supabase/functions/`): Trustly bank-authorization + deposit
+  (`trustly-establish-bank-auth`, `trustly-confirm-bank-auth`, `trustly-create-deposit`),
+  the Trustly webhook (credits wallets, settles withdrawals, applies KYC results),
+  withdrawals (`withdraw`, Trustly payout), and admin game creation.
 - **Mobile app** (`mobile/`): Expo/React Native, using `@supabase/supabase-js` directly
   for auth, RPC calls, and Realtime.
 - **Desktop app** (`desktop/`): Electron shell around a `react-native-web` export of the
   *same* mobile codebase - one game client, three targets (iOS/Android/desktop).
 - **Web MVP (soft launch)**: the same mobile codebase also exports to a responsive
   browser app (`cd mobile && npm run build:web` → static `mobile/web-build/`). This is
-  Step 2 of the launch playbook — players in TX/CA open it in Safari/Chrome, sign in,
-  fund their wallet via Stripe, and play, with no app-store review. See
+  Step 2 of the launch playbook — players open it in Safari/Chrome, sign in,
+  fund their wallet via Trustly (bank transfer), and play, with no app-store review. See
   [Web MVP deployment](#web-mvp-soft-launch-deployment).
 - **Internal command center** (`command-center/`): React/Vite staff dashboard - game
   creation/monitoring/force-payout, question bank CRUD, financial ledger browser,
@@ -151,9 +154,9 @@ inflate real payouts:
 - `profiles.wallet_balance_cents` is the **total** spendable balance (cash + bonus);
   `profiles.promo_balance_cents` is the non-withdrawable bonus slice.
   **Withdrawable cash = `wallet_balance_cents − promo_balance_cents`.**
-- `credit_wallet_from_stripe(user, cash, bonus, event)` credits the cash paid as
-  withdrawable and the bonus above it as promo (the webhook derives `bonus = tokens −
-  priceCents`; idempotent on the Stripe event id).
+- `credit_wallet_from_trustly(user, cash, bonus, notification_id)` credits the cash paid
+  as withdrawable and the bonus above it as promo (the webhook derives `bonus = tokens −
+  priceCents`; idempotent on the Trustly notification id).
 - `buy_round` spends **promo first**, and **only the cash portion funds the prize pool**
   (60/40) — the pool can never exceed the real USD collected.
 - `reserve_withdrawal` draws **only** cash; dipping into bonus raises
@@ -177,12 +180,12 @@ npm run build:web        # -> static site in mobile/web-build/
 Host `mobile/web-build/` on any static host (Vercel/Netlify/Cloudflare Pages/S3) at
 e.g. `pennypincher.app`. Then:
 
-- Set the `create-checkout-session` edge function's `APP_PUBLIC_URL` secret to that
-  origin so Stripe's success/cancel URLs return players to the app. On web the Wallet
-  screen sends players straight to Stripe Checkout and syncs the credited balance back
-  on return (webhook → Realtime).
+- Set the `trustly-establish-bank-auth` edge function's `APP_PUBLIC_URL` secret to that
+  origin so Trustly's hosted bank-authorization page returns players to the app. On web
+  the Wallet screen sends players to Trustly's hosted flow and syncs the credited
+  balance back on return (webhook → Realtime).
 - **Region**: the app shows a location gate (`RegionGate`) so a verified soft-launch
-  tester can declare TX/CA, which calls `geo-check` → `set_verified_region`. This is a
+  tester can declare their state, which calls `geo-check` → `set_verified_region`. This is a
   **pre-Radar stopgap** for the controlled soft launch only — wire `RADAR_SECRET_KEY` +
   the vendor SDK before the public app-store launch, since `buy_round` is the hard
   enforcement point regardless.
@@ -213,13 +216,19 @@ integrations are pluggable webhook/config points. Full status map in
 [`docs/LAUNCH-CHECKLIST.md`](docs/LAUNCH-CHECKLIST.md).
 
 - **KYC**: `reserve_withdrawal` blocks any payout until `kyc_status = 'verified'`
-  and the player is 18+. `kyc-webhook` edge fn records vendor results
-  (Persona/Stripe Identity) via `apply_kyc_result`; staff can manually review in
-  the command center's Compliance page. Registration and deposits need only an
+  and the player is 18+. Trustly ID supplies this automatically - linking a bank
+  account (`trustly-establish-bank-auth` with `kycType: 1`) returns bank-verified
+  name/date-of-birth plus OFAC/SDN/PEP screening, applied via `apply_kyc_result`
+  in `trustly-confirm-bank-auth`; staff can manually review/override in the
+  command center's Compliance page (`kyc-webhook` still exists as a generic
+  fallback for any other vendor). Registration and deposits need only an
   email — KYC gates *withdrawal*, not entry.
 - **Tax**: `payout_game` tracks `lifetime_winnings_cents`; `reserve_withdrawal`
-  locks withdrawals at $550 until the player confirms tax details (Stripe Tax's
-  W-9 flow → `confirm_tax_details`), keeping ahead of the $600 1099-MISC threshold.
+  locks withdrawals at $550 until the player confirms tax details
+  (`confirm_tax_details`), keeping ahead of the $600 1099-MISC threshold. 🔌 Actual
+  W-9 collection/1099 filing still needs a vendor - this was going to be Stripe
+  Tax before Stripe was removed; needs a replacement (or a Trustly-native option,
+  if one exists) before real payouts cross the threshold.
 - **Geo-fencing (launch whitelist)**: `buy_round` allows buy-ins **only** from the
   states in `platform_config.allowed_states` (seeded to the launch set **TX, CA, NY,
   OH, PA**) — every other region raises `REGION_BLOCKED` by default. `blocked_states`
@@ -242,7 +251,7 @@ human in the loop, not blind autonomy.
 |---|---|---|
 | **Game Director** | `game-engine --watch` polls for pending games and runs their full 100-round + Sudden Death Overtime loop automatically. | Purely mechanical - no money/identity decisions, safe to fully automate. |
 | **Fraud Sentinel** | Round-aware anti-cheat (see above), surfaced in the command center's Compliance page for staff review/action. | Flags for human review; doesn't auto-ban - a fast answer is a signal, not proof. |
-| **Ledger Master** | `Financials` page reconciliation check: verifies debits+bonuses == pool+cut and payouts == pool, to the cent. | Reconciliation is safe to automate (read-only math). Real Stripe payouts stay player-initiated via the existing withdraw flow - auto-pushing money out without a withdrawal request sidesteps the KYC/consent flow already built. |
+| **Ledger Master** | `Financials` page reconciliation check: verifies debits+bonuses == pool+cut and payouts == pool, to the cent. | Reconciliation is safe to automate (read-only math). Real Trustly payouts stay player-initiated via the existing withdraw flow - auto-pushing money out without a withdrawal request sidesteps the KYC/consent flow already built. |
 | **Trivia Alchemist** | `generate-questions` Edge Function drafts questions via an LLM into `question_drafts`; command center's Question Bank has a review/approve/reject UI. | Never writes to the live question bank directly - there's no automated fact-checking pass (would need a separate knowledge-base integration), so human review is the actual safety mechanism. |
 | **Hype Machine** | Command center's Games page drafts a post-game announcement from real payout data. | Draft only, not auto-posted - no social API keys are wired up, and publishing a real player's identity + winnings without their consent is a consent/ToS judgment call, not something to automate blindly. |
 | **Campaign Commander** | Analytics page shows revenue/volume per game mode. | Explicitly **not** automated - shifting real ad budgets across Meta/Google Ads is spending real money without human approval, which is out of scope here regardless of how confident an "optimizer" claims to be. |
@@ -266,13 +275,21 @@ replace with real licensed/curated content before launch.
 
 Set these in Supabase (Project Settings -> Edge Functions -> Secrets), then redeploy:
 
-- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
-- `APP_PUBLIC_URL` (used for Stripe Checkout success/cancel redirect URLs)
+- `TRUSTLY_ACCESS_ID`, `TRUSTLY_ACCESS_KEY`, `TRUSTLY_MERCHANT_ID` (Trustly API
+  credentials; see `TRUSTLY_API_BASE_URL` below for sandbox vs. production)
+- `TRUSTLY_API_BASE_URL` (optional; defaults to Trustly's sandbox - set to the
+  production base URL once confirmed, see the "VERIFY" comments in
+  `supabase/functions/trustly-*`)
+- `TRUSTLY_WEBHOOK_SECRET` (verifies incoming Trustly notifications - currently a
+  placeholder shared-secret scheme, see `trustly-webhook`'s header comment)
+- `APP_PUBLIC_URL` (used for Trustly's hosted bank-authorization return URL)
 - `ADMIN_USER_IDS` (comma-separated Supabase auth user ids allowed to call
   `create-game`)
 - `ANTHROPIC_API_KEY` (used by `generate-questions` to draft trivia questions for
   staff review - see "Workforce" below)
-- `KYC_WEBHOOK_SECRET` (shared secret for the `kyc-webhook` receiver - Persona/Stripe Identity)
+- `KYC_WEBHOOK_SECRET` (optional; shared secret for the generic `kyc-webhook`
+  receiver, only needed if using an alternate/additional KYC vendor - Trustly ID
+  doesn't use this path, see the KYC section above)
 - `RADAR_SECRET_KEY` (optional; anti-spoof location verification in `geo-check`)
 
 Deploy functions with `supabase functions deploy <name>`.
@@ -339,7 +356,7 @@ Static site, no build step - see `website/README.md`.
 
 ```
 supabase/migrations/   Schema, RLS, Postgres functions (source of truth for the DB)
-supabase/functions/    Edge Functions (Stripe + admin game creation)
+supabase/functions/    Edge Functions (Trustly + admin game creation)
 game-engine/           Persistent worker driving the round timer + Realtime broadcast
 mobile/                Expo/React Native client (iOS, Android, and web export)
 desktop/               Electron shell wrapping the mobile app's web export

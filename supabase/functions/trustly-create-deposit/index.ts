@@ -1,7 +1,6 @@
 // Buys a token bundle via Trustly, pulling funds from the player's already-
 // authorized bank account (profiles.trustly_transaction_id, set by
-// trustly-confirm-bank-auth). Mirrors create-checkout-session's bundle table
-// exactly so both processors sell identical bundles.
+// trustly-confirm-bank-auth).
 //
 // Terminology note: Trustly's API calls this direction "Capture" (pulling
 // funds FROM the end user) - the opposite of what "Capture" usually means in
@@ -11,8 +10,7 @@
 // same verification caveat that applies to every Trustly call in this file.
 //
 // The wallet is only credited once Trustly confirms the capture via
-// trustly-webhook - never trust the response from this call alone (same rule
-// create-checkout-session follows for Stripe).
+// trustly-webhook - never trust the response from this call alone.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const BUNDLES: Record<string, { price_cents: number; tokens: number; label: string }> = {

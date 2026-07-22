@@ -31,7 +31,8 @@ than a pure quiz would, and should get specific legal sign-off before being buil
 
 1. **Entity structure & licensing**: does operating this require a money transmitter
    license (state-by-state) for holding player funds between deposit and payout/withdrawal?
-   Stripe Connect changes this analysis but doesn't eliminate it.
+   Using Trustly (or any payment processor) as the payment rail changes this analysis but
+   doesn't eliminate it.
 2. **State-by-state legality** of pay-to-enter, cash-prize skill contests - not just
    "gambling law" but also specific skill-game/sweepstakes statutes (several states have
    both).
@@ -41,21 +42,23 @@ than a pure quiz would, and should get specific legal sign-off before being buil
 4. **Prize-value registration/bonding thresholds** - several states (e.g., historically
    NY, FL, RI) require registering a contest or posting a bond once the prize pool
    crosses a dollar threshold.
-5. **AML/KYC obligations** on withdrawal (Stripe Connect requires this at the payments
-   layer; you may have additional obligations at the platform layer once payouts get
-   large or frequent).
+5. **AML/KYC obligations** on withdrawal (Trustly's own onboarding/underwriting requires
+   this at the payments layer; you may have additional obligations at the platform layer
+   once payouts get large or frequent).
 6. **Tax reporting** - IRS Form 1099-MISC/1099-K obligations once a player's winnings
    cross reporting thresholds; state equivalents vary.
 7. **Age verification & geofencing** - "18+" self-attestation in a Terms of Service is
    not the same as an enforced age/location gate, and regulators generally expect
    the latter for real-money contests.
-8. **Payment processor approval.** Stripe's Restricted Businesses policy lists
-   "gambling" and in some cases skill-based cash contests as requiring pre-approval or
-   being outright prohibited depending on jurisdiction and structure - this needs
-   explicit confirmation from Stripe (or a specialty gaming payments processor) before
-   you build further on the assumption that plain Stripe Checkout/Connect will work at
-   scale. Being quietly shut off from payments after launch is a common failure mode for
-   apps in this category.
+8. **Payment processor approval.** This risk already materialized once: Stripe
+   classified this account as a restricted business under its gambling-adjacent use
+   policy, and the platform has since moved to Trustly (a specialty payments rail built
+   for exactly this category - DFS/skill-contest platforms). That doesn't make this
+   question go away - it needs explicit confirmation from Trustly's own underwriting
+   (state-by-state legality, entity structure, licensing) before building further on the
+   assumption that the integration will work at scale. Being quietly shut off from
+   payments after launch is a common failure mode for apps in this category, and it can
+   happen to a second processor just as it did to the first.
 
 ## What's in this folder
 

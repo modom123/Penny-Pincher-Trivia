@@ -8,6 +8,7 @@ type LedgerRow = {
   amount_cents: number;
   game_id: string | null;
   stripe_ref: string | null;
+  trustly_ref: string | null;
   created_at: string;
 };
 
@@ -218,7 +219,7 @@ export default function FinancialsPage() {
                     ? `#${clientsById[row.user_id].client_number} ${clientsById[row.user_id].username}`
                     : `${row.user_id.slice(0, 8)}...`}
                 </td>
-                <td>{row.stripe_ref ?? (row.game_id ? `game ${row.game_id.slice(0, 8)}...` : '-')}</td>
+                <td>{row.trustly_ref ?? row.stripe_ref ?? (row.game_id ? `game ${row.game_id.slice(0, 8)}...` : '-')}</td>
               </tr>
             ))}
           </tbody>

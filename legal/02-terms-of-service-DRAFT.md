@@ -72,8 +72,8 @@ This separation is enforced by the Service: withdrawals are paid only from the C
 Balance. `[COUNSEL: confirm the bonus-Token disclosure meets consumer-protection
 requirements in each state; it must be presented clearly at the point of purchase.]`
 
-4.4. **Deposits.** Token purchases are processed by Stripe. We do not store full card
-details.
+4.4. **Deposits.** Token purchases are processed by Trustly via a direct bank transfer
+("Pay by Bank"). We do not store your bank login credentials.
 
 4.5. **No refunds on Tokens.** All Token purchases are final and non-refundable once
 completed, except where a refund is required by law. Entry Fees are non-refundable once a
@@ -130,8 +130,8 @@ set out in the Official Rules.
 
 6.2. **Prize credit.** Prizes are credited to your Cash Balance.
 
-6.3. **Withdrawals.** You may withdraw from your Cash Balance to a linked payment account
-(via Stripe Connect), subject to identity verification (Section 8) and tax compliance
+6.3. **Withdrawals.** You may withdraw from your Cash Balance to your linked bank account
+(via Trustly), subject to identity verification (Section 8) and tax compliance
 (Section 7). We may delay or decline a withdrawal pending verification, investigation of
 suspected violations, or as required by anti-money-laundering law.
 
@@ -150,12 +150,13 @@ treatment and state reporting thresholds.]`
 ## 8. Identity Verification (KYC) & Anti-Money-Laundering
 
 8.1. Registration and deposits require only a valid email. **Identity verification (legal
-name, date of birth confirming 18+/`[COUNSEL]`, and government ID) is required before your
-first withdrawal**, and may be required again periodically.
+name and date of birth confirming 18+/`[COUNSEL]`, verified through your linked bank
+account) is required before your first withdrawal**, and may be required again
+periodically.
 
 8.2. We may delay, limit, or refuse withdrawals, and suspend accounts, to comply with KYC
-and AML obligations. `[COUNSEL: confirm KYC vendor, thresholds, and record-keeping
-obligations for your structure.]`
+and AML obligations. `[COUNSEL: confirm KYC vendor (currently Trustly ID), thresholds, and
+record-keeping obligations for your structure.]`
 
 ## 9. Fair Play, Anti-Cheat & Integrity
 

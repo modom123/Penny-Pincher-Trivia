@@ -1,18 +1,17 @@
 // Trustly notification receiver. Deployed with verify_jwt disabled (Trustly
-// does not send a Supabase JWT), same as stripe-webhook.
+// does not send a Supabase JWT).
 //
 // *** VERIFY BEFORE REAL USE ***
-// stripe-webhook establishes authenticity via Stripe's own cryptographic
-// signature verification (stripe.webhooks.constructEventAsync) - that is the
-// standard this function should be held to, but Trustly's AMER REST API's
-// exact notification-signing scheme could not be confirmed (their reference
-// docs blocked automated fetches in this environment; the legacy EMEA
-// JSON-RPC API signs with RSA-SHA1, but this REST API may use something
-// else entirely - a header-based signature, mTLS, or IP allowlisting).
-// verifyNotification() below is a STOPGAP (shared-secret header, matching
-// this repo's cron-secret pattern) - replace it with Trustly's actual
-// verification method before this handles a single real dollar. Until then,
-// treat every notification here as unauthenticated.
+// A payment webhook needs real cryptographic signature verification (the way
+// Stripe's constructEventAsync worked before this platform moved off Stripe),
+// but Trustly's AMER REST API's exact notification-signing scheme could not
+// be confirmed (their reference docs blocked automated fetches in this
+// environment; the legacy EMEA JSON-RPC API signs with RSA-SHA1, but this
+// REST API may use something else entirely - a header-based signature, mTLS,
+// or IP allowlisting). verifyNotification() below is a STOPGAP (shared-secret
+// header, matching this repo's cron-secret pattern) - replace it with
+// Trustly's actual verification method before this handles a single real
+// dollar. Until then, treat every notification here as unauthenticated.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 function verifyNotification(req: Request): boolean {

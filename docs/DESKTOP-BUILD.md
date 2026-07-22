@@ -42,8 +42,9 @@ npm run dist                  # build-web, then electron-builder -> dist/*.dmg /
 - `will-navigate` blocks the window from being navigated to an untrusted
   origin. Only the local bundle (`file://`) plus a short per-app allowlist in
   `main.js` (`ALLOWED_NAVIGATION_HOSTS`) can navigate in place:
-  - Player app: Stripe checkout only. Google OAuth deliberately does **not**
-    navigate the app window — see `desktop/README.md` § Google sign-in.
+  - Player app: Trustly's hosted bank-authorization page only. Google OAuth
+    deliberately does **not** navigate the app window — see `desktop/README.md`
+    § Google sign-in.
   - Command Center: the Supabase project only (staff sign in with
     email/password — no OAuth/payment redirect today).
 

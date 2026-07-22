@@ -21,9 +21,9 @@ human decision before real money and the public app stores are involved.
 |---|---|---|
 | Withdrawal blocked until identity verified + 18+ | ✅ | `reserve_withdrawal` raises `KYC_REQUIRED` / `AGE_REQUIREMENT` |
 | Register + load funds with just email (KYC only gates withdrawal) | ✅ | KYC checked only in `reserve_withdrawal`, not signup/deposit |
-| Vendor webhook to record verification result | 🔌 | `kyc-webhook` edge fn → `apply_kyc_result`; set `KYC_WEBHOOK_SECRET`, point Persona/Stripe Identity at it |
+| Vendor verification wired | 🔌 | Trustly ID: `trustly-establish-bank-auth` (kycType: 1) + `trustly-confirm-bank-auth` → `apply_kyc_result`. Built but **unverified against a real Trustly sandbox** — see "VERIFY" comments in `supabase/functions/trustly-*`. `kyc-webhook` edge fn still exists as a generic fallback for any other vendor |
 | Staff manual KYC review/override | ✅ | Command center → Compliance → KYC review (`admin_set_kyc_status`) |
-| Choose the vendor (Persona vs Stripe Identity vs Identiq) | 🧑 | — |
+| Choose the vendor | ✅ | Trustly ID (chosen — reuses the same bank-authorization flow as payments, no separate identity vendor needed) |
 
 ## 2. Tax Compliance & 1099-MISC
 
@@ -32,7 +32,7 @@ human decision before real money and the public app stores are involved.
 | Track lifetime winnings per player | ✅ | `payout_game` increments `profiles.lifetime_winnings_cents` |
 | Lock withdrawals at $550 until tax details confirmed | ✅ | `reserve_withdrawal` raises `TAX_DETAILS_REQUIRED` |
 | Player prompt + confirm-tax-details flow | ✅ (stub) | Mobile Wallet screen → "Confirm tax details" (`confirm_tax_details`) |
-| Actual W-9 collection + 1099 filing | 🔌 | Turn on **Stripe Tax** in Stripe Connect; wire its hosted W-9 flow to call `confirm_tax_details` on completion |
+| Actual W-9 collection + 1099 filing | 🧑/🔌 | **Open item** — this was going to be Stripe Tax before Stripe was removed from the platform. Needs a replacement vendor (or a Trustly-native option, if one exists) wired to call `confirm_tax_details` on completion |
 | Confirm threshold is calendar-year vs lifetime for your tax treatment | 🧑 | Flagged `[COUNSEL]` in the migration |
 
 ## 3. Geo-Fencing & Jurisdictional Locking
@@ -66,7 +66,7 @@ human decision before real money and the public app stores are involved.
 | Supabase DB schema live & indexed | ✅ | All migrations in `supabase/migrations/`, applied to `pkvdthwqvjpxhqorfpub` |
 | Real-time game loop configured | ✅ | Supabase Realtime + `game-engine` worker (this build uses Realtime broadcast, not a raw Socket.io cluster) |
 | Redis leaderboard | 🧑 | Not used — leaderboard is computed in Postgres/`end_round`. Add Upstash Redis only if load demands it |
-| Stripe Connect deposits live | 🔌 | `create-checkout-session` + `stripe-webhook` deployed; set `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` |
+| Trustly deposits live | 🔌 | `trustly-establish-bank-auth`/`trustly-create-deposit` + `trustly-webhook` deployed; set `TRUSTLY_ACCESS_ID`/`TRUSTLY_ACCESS_KEY`/`TRUSTLY_MERCHANT_ID`. **Unverified against a real sandbox** — see "VERIFY" comments in `supabase/functions/trustly-*` |
 | ID verification hooked to withdrawals | ✅ / 🔌 | Enforced in DB; vendor webhook needs a key |
 | Geo-fencing restricting banned states | ✅ / 🔌 | Enforced in DB; geo-vendor needs a key |
 | 10k trivia questions | 🔌 | `generate-questions` (Trivia Alchemist) drafts for review; 100 placeholders seeded. Needs `ANTHROPIC_API_KEY` + human review to scale up |
@@ -77,9 +77,12 @@ human decision before real money and the public app stores are involved.
 Project Settings → Edge Functions → Secrets:
 
 ```
-STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, APP_PUBLIC_URL   # payments
+TRUSTLY_ACCESS_ID, TRUSTLY_ACCESS_KEY, TRUSTLY_MERCHANT_ID # Trustly API credentials
+TRUSTLY_API_BASE_URL                                       # optional; defaults to Trustly's sandbox
+TRUSTLY_WEBHOOK_SECRET                                     # notification auth (placeholder scheme - see trustly-webhook)
+APP_PUBLIC_URL                                             # Trustly hosted-flow return URL
 ANTHROPIC_API_KEY                                          # question drafting
-KYC_WEBHOOK_SECRET                                         # KYC webhook auth
+KYC_WEBHOOK_SECRET                                         # optional - generic KYC webhook fallback, not used by Trustly ID
 RADAR_JWT_SECRET                                           # geo verification: Radar Fraud "JWT Secret Key" (HS256). Setting it makes geo-check require a valid verified-location token
 ADMIN_USER_IDS                                             # legacy create-game gate (command center uses staff_roles instead)
 ```
@@ -94,8 +97,8 @@ cash/promo wallet split (migrations `20260707003220` → `20260707010300`):
 
 - `profiles.promo_balance_cents` tracks the non-withdrawable bonus slice;
   **withdrawable cash = `wallet_balance_cents − promo_balance_cents`**.
-- `credit_wallet_from_stripe(user, cash, bonus, event)` credits the cash paid as
-  withdrawable and the bonus above it as promo (the `stripe-webhook` derives
+- `credit_wallet_from_trustly(user, cash, bonus, notification_id)` credits the cash paid
+  as withdrawable and the bonus above it as promo (the `trustly-webhook` derives
   `bonus = tokens − priceCents`).
 - `buy_round` spends **promo first**, and **only the cash portion funds the prize pool**
   (60/40) — so the pool never exceeds real USD collected.
@@ -105,8 +108,10 @@ cash/promo wallet split (migrations `20260707003220` → `20260707010300`):
   Wallet screen shows cash vs bonus separately.
 
 Verified end-to-end against the live DB (promo-first spend, cash-only pool 30/20 from a
-50c cash round, MIN/MAX buy-in gates, withdrawal cash-only, promo-locked, Stripe
-idempotency). `[COUNSEL: bonus terms are still a disclosure/consumer-protection question —
+50c cash round, MIN/MAX buy-in gates, withdrawal cash-only, promo-locked, idempotency on
+the payment processor's event/notification id — originally verified against Stripe,
+`credit_wallet_from_trustly` mirrors the same idempotency guarantee for Trustly).
+`[COUNSEL: bonus terms are still a disclosure/consumer-protection question —
 see legal/02-terms-of-service-DRAFT.md §3.1.]`
 
 ### Per-game token buy-in limits
