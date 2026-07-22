@@ -27,10 +27,8 @@ monetization model, without a definitive answer to this question per target stat
   platform fee. `[COUNSEL: confirm these percentages don't themselves trigger a
   different regulatory classification in any target state - some jurisdictions cap the
   "house" percentage retained in a skill contest.]`
-- Prize distribution scales with the field size: fewer than 15 eligible players pays the
-  top 3 (50% / 30% / 20% of the prize pool), 15–39 pays the top 5, and 40+ pays roughly
-  the top 10% (a decaying podium plus a flat minimum-cash tail). The applicable schedule
-  and number of paid places is shown before entry.
+- How that pool is split across finishers is one of the Prize Distribution schemes
+  below - see that section rather than assuming a single fixed structure.
 
 ### Game 2: Streak Saver
 - Entry cost: same per-round pricing as above, but a correct answer makes the *next*
@@ -48,6 +46,28 @@ monetization model, without a definitive answer to this question per target stat
   at rounds 25/50/75. That was removed because a platform-funded prize - as opposed to
   one funded purely by entry fees - could raise its own sweepstakes/AMOE classification
   question. This mode is now a pure skill-contest pricing variant.]`
+
+### Prize Distribution (applies to all three modes)
+
+The 60%-of-entry-fees prize pool described above is split across finishers according to
+one of four schemes. Platform staff assign one scheme to each game at creation - it is
+**not** tied to which of the three Game Modes above is being played, and it is disclosed
+to the player, along with the resulting number of paid places, before they enter that
+specific game.
+
+- **Standard** (the default): scales with field size - fewer than 15 eligible players
+  pays the top 3 (50% / 30% / 20% of the prize pool), 15–39 pays the top 5, and 40+ pays
+  roughly the top 10% (a decaying podium plus a flat minimum-cash tail).
+- **Classic Top 3**: always pays only the top 3 finishers, 50% / 30% / 20%, regardless of
+  how large the field grows.
+- **Winner-Take-Most**: pays only the top 3 finishers, weighted 70% / 20% / 10%.
+- **Spread the Wealth**: pays roughly the top 25% of the field (minimum 5 places) on a
+  gentle decay, so more players win a smaller share.
+
+`[COUNSEL: confirm a single game's payout mechanics may legally vary from one instance of
+the contest to the next, provided it is disclosed before entry each time, or whether
+prize-structure variability itself needs separate disclosure/registration in some target
+states.]`
 
 ### Sudden Death Overtime (applies to all three modes)
 - Triggered only if two or more players are tied for a top-3 finishing position at
