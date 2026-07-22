@@ -18,7 +18,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const GRADES = Array.from({ length: 20 }, (_, i) => i + 3); // 3..22
 
-type Subject = { id: string; slug: string; name: string; domain: string };
+type Subject = { id: string; slug: string; name: string; domain: string; sort_order: number };
 type Draft = { question_text: string; options: Record<string, string>; correct_option: string };
 
 function gradeDescriptor(g: number): string {
@@ -184,7 +184,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: candidateSubjects, error: subjErr } = await admin
     .from("subjects")
-    .select("id, slug, name, domain")
+    .select("id, slug, name, domain, sort_order")
     .eq("is_active", true)
     .order("sort_order")
     .limit(300); // wide pool; already-covered subjects are skipped below without counting against maxSubjects
@@ -193,14 +193,36 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: subjErr.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
+  // Round-robin cursor: without this, every run rescans from the very first
+  // subject in sort_order, so if that subject alone takes more than one run's
+  // budget to fill, it (and only it) gets hit run after run while every other
+  // subject starves. Instead, each run picks up right after wherever the
+  // previous run left off, wrapping back to the start once it reaches the
+  // end - so generation actually spreads across the whole taxonomy over time
+  // instead of exhausting one subject before ever touching the next.
+  const { data: cursorRow } = await admin
+    .from("platform_config")
+    .select("value")
+    .eq("key", "auto_curate_cursor_sort_order")
+    .maybeSingle();
+  const cursor = Number(cursorRow?.value ?? -1);
+
+  const allSubjects = (candidateSubjects ?? []) as Subject[];
+  const rotatedSubjects = [
+    ...allSubjects.filter((s) => s.sort_order > cursor),
+    ...allSubjects.filter((s) => s.sort_order <= cursor),
+  ];
+
   let callsMade = 0;
   let drafted = 0;
   let subjectsProcessed = 0;
+  let lastExaminedSortOrder: number | null = null;
   const perSubjectResults: Array<{ slug: string; drafted: number }> = [];
   const errors: string[] = [];
 
-  for (const subject of (candidateSubjects ?? []) as Subject[]) {
+  for (const subject of rotatedSubjects) {
     if (subjectsProcessed >= maxSubjects || callsMade >= maxCalls) break;
+    lastExaminedSortOrder = subject.sort_order;
 
     const { data: coverage, error: covErr } = await admin.rpc("subject_grade_coverage", { p_subject_id: subject.id });
     if (covErr || !coverage) continue;
@@ -262,6 +284,15 @@ Deno.serve(async (req: Request) => {
   if (!ignoreBudget && callsMade > 0) {
     const { data: newBalance } = await admin.rpc("debit_content_budget", { p_cents: callsMade * estCostCentsPerCall });
     budgetCentsRemaining = typeof newBalance === "number" ? newBalance : null;
+  }
+
+  // Advance the rotation cursor past whatever we actually looked at this run
+  // (whether it needed work or was skipped as already-covered), so the next
+  // run resumes from here instead of restarting at the top every time.
+  if (lastExaminedSortOrder !== null) {
+    await admin
+      .from("platform_config")
+      .upsert({ key: "auto_curate_cursor_sort_order", value: lastExaminedSortOrder }, { onConflict: "key" });
   }
 
   return new Response(
