@@ -32,6 +32,22 @@ function getElectronBridge(): ElectronBridge | undefined {
 // pennypincher:// deep link instead - see desktop/main.js), so nothing here
 // can rely on detectSessionInUrl. Handle both flow types the client might be
 // configured for: PKCE (a `code` param) and implicit (tokens in the hash).
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Timed out after ${ms}ms`)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
 async function completeSessionFromDeepLink(url: string) {
   const parsed = new URL(url);
   const hashParams = new URLSearchParams(parsed.hash.replace(/^#/, ''));
@@ -72,16 +88,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data }) => {
-      setSession(data.session);
-      await checkUsername(data.session);
-      setLoading(false);
-    });
+    let cancelled = false;
+    // Bootstraps session state on first load. Both calls below used to run
+    // unguarded - if getSession() or checkUsername() ever rejected (a
+    // corrupted stored session, a slow/failed AsyncStorage-web IndexedDB
+    // read, a network hiccup) or simply hung, setLoading(false) was never
+    // reached, and RootNavigator's `if (loading) return null` left the app
+    // stuck on WebFrame's blue background forever - only a full page reload
+    // (which re-runs this from scratch) recovered. The timeout below caps
+    // how long a hang can block the UI; the try/finally guarantees loading
+    // always clears even on a thrown error.
+    (async () => {
+      try {
+        const { data } = await withTimeout(supabase.auth.getSession(), 6000);
+        if (cancelled) return;
+        setSession(data.session);
+        await withTimeout(checkUsername(data.session), 6000);
+      } catch (err) {
+        console.warn('Session bootstrap failed, defaulting to signed-out:', (err as Error).message);
+        if (!cancelled) {
+          setSession(null);
+          setNeedsUsername(false);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
     const { data: subscription } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       setSession(newSession);
-      await checkUsername(newSession);
+      try {
+        await withTimeout(checkUsername(newSession), 6000);
+      } catch (err) {
+        console.warn('checkUsername failed:', (err as Error).message);
+      }
     });
-    return () => subscription.subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.subscription.unsubscribe();
+    };
   }, [checkUsername]);
 
   useEffect(() => {

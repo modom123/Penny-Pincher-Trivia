@@ -3,7 +3,7 @@ import { View, Text, Pressable, StyleSheet, RefreshControl, ScrollView } from 'r
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { inviteViaEmail, inviteViaSms, inviteViaMore } from '../lib/referral';
+import { inviteViaEmail, inviteViaSms, inviteViaMore, copyReferralLink, referralLink } from '../lib/referral';
 import { theme, money } from '../theme';
 
 type ReferralStatus = {
@@ -41,6 +41,11 @@ export default function ReferEarnScreen() {
     else inviteViaMore(...args);
   }
 
+  function copyLink() {
+    if (!status?.referralCode) return;
+    copyReferralLink(status.referralCode);
+  }
+
   return (
     <ScrollView
       style={styles.container}
@@ -56,6 +61,12 @@ export default function ReferEarnScreen() {
       <View style={styles.codeCard}>
         <Text style={styles.codeLabel}>YOUR CODE</Text>
         <Text style={styles.code}>{status?.referralCode ?? '—'}</Text>
+        {status?.referralCode && (
+          <Pressable onPress={copyLink} style={styles.linkRow}>
+            <Text style={styles.linkText} numberOfLines={1}>{referralLink(status.referralCode)}</Text>
+            <Text style={styles.linkCopy}>Copy</Text>
+          </Pressable>
+        )}
         <View style={styles.inviteBtnRow}>
           <Pressable style={styles.inviteBtn} onPress={() => invite('email')} disabled={!status?.referralCode}>
             <Text style={styles.inviteBtnText}>📧 Email</Text>
@@ -67,6 +78,11 @@ export default function ReferEarnScreen() {
             <Text style={styles.inviteBtnText}>↗️ More</Text>
           </Pressable>
         </View>
+        <Text style={styles.linkHint}>
+          Tip: paste the bare link above into a bio, story, or DM - a wall of text with a
+          link buried in it often gets ignored, but a clean link stands out and can even
+          generate a link preview.
+        </Text>
       </View>
 
       <View style={styles.statRow}>
@@ -106,6 +122,20 @@ const styles = StyleSheet.create({
   },
   codeLabel: { color: theme.textMuted, fontSize: 11, fontWeight: '800', letterSpacing: 1.5, marginBottom: 6 },
   code: { color: theme.gold, fontSize: 32, fontWeight: '900', letterSpacing: 2, marginBottom: 16 },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: theme.bgDeep,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    width: '100%',
+    marginBottom: 16,
+  },
+  linkText: { flex: 1, color: theme.text, fontSize: 13, fontWeight: '600' },
+  linkCopy: { color: theme.emerald, fontSize: 13, fontWeight: '900' },
+  linkHint: { color: theme.textMuted, fontSize: 12, lineHeight: 17, marginTop: 12, textAlign: 'center' },
   inviteBtnRow: { flexDirection: 'row', gap: 8, width: '100%' },
   inviteBtn: {
     flex: 1,
