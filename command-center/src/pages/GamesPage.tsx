@@ -21,6 +21,9 @@ type Game = {
   min_players: number;
   scheduled_start_at: string | null;
   created_at: string;
+  pool_rollover_amount_cents: number;
+  rolled_over_from_game_id: string | null;
+  rolled_over_to_game_id: string | null;
 };
 
 const MODE_LABELS: Record<GameMode, string> = {
@@ -517,6 +520,11 @@ export default function GamesPage() {
                 <td>
                   <span className={`badge status-${g.status}`}>{g.status}</span>
                   {g.in_sudden_death && <span className="badge open" style={{ marginLeft: 6 }}>SUDDEN DEATH</span>}
+                  {g.rolled_over_to_game_id && (
+                    <span className="badge open" style={{ marginLeft: 6 }} title={`No eligible winner - pool rolled into game ${g.rolled_over_to_game_id.slice(0, 8)}`}>
+                      🔄 ROLLED OVER
+                    </span>
+                  )}
                 </td>
                 <td>
                   {g.current_round} / {g.total_rounds}
@@ -526,6 +534,9 @@ export default function GamesPage() {
                     ${(g.total_prize_pool_cents / 100).toFixed(2)}
                     <span className="cut">+${(g.admin_revenue_pool_cents / 100).toFixed(2)} cut</span>
                   </span>
+                  {g.rolled_over_from_game_id && (
+                    <div style={{ fontSize: 11, opacity: 0.7 }}>includes ${(g.pool_rollover_amount_cents / 100).toFixed(2)} rollover</div>
+                  )}
                 </td>
                 <td>{new Date(g.created_at).toLocaleString()}</td>
                 <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>

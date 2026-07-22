@@ -23,6 +23,30 @@ export default function ResultsScreen({ route, navigation }: Props) {
   // Podium display order: 2nd, 1st, 3rd (classic center-stage winner).
   const order: (1 | 2 | 3)[] = [2, 1, 3];
 
+  if (payload.noWinner) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.kicker}>GAME COMPLETE</Text>
+        <Text style={styles.pool}>{money(payload.totalPrizePoolCents)}</Text>
+        <Text style={styles.poolLabel}>prize pool - no eligible winner this time</Text>
+
+        <View style={styles.rolloverBox}>
+          <Text style={styles.rolloverEmoji}>🔄</Text>
+          <Text style={styles.rolloverTitle}>Pool rolled over!</Text>
+          <Text style={styles.rolloverBody}>
+            {payload.rolloverGameId
+              ? `Nobody was left to win this one, so the ${money(payload.totalPrizePoolCents)} pool carried over into a new tournament with the same rules - head to the Lobby to sign up.`
+              : `Nobody was left to win this one. Our team will roll the ${money(payload.totalPrizePoolCents)} pool into a new tournament shortly.`}
+          </Text>
+        </View>
+
+        <Pressable style={styles.button} onPress={() => navigation.replace('Main', { screen: 'Home' })}>
+          <Text style={styles.buttonText}>Back to Lobby</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.kicker}>GAME COMPLETE</Text>
@@ -81,6 +105,19 @@ const styles = StyleSheet.create({
   kicker: { color: theme.emerald, textAlign: 'center', fontWeight: '800', letterSpacing: 3, fontSize: 12 },
   pool: { color: theme.gold, textAlign: 'center', fontSize: 44, fontWeight: '900', marginTop: 4 },
   poolLabel: { color: theme.textMuted, textAlign: 'center', fontSize: 12, marginBottom: 8 },
+
+  rolloverBox: {
+    backgroundColor: theme.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.gold,
+    padding: 20,
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  rolloverEmoji: { fontSize: 32, marginBottom: 8 },
+  rolloverTitle: { color: theme.gold, fontSize: 18, fontWeight: '900', marginBottom: 8 },
+  rolloverBody: { color: theme.text, fontSize: 14, textAlign: 'center', lineHeight: 20 },
 
   podium: { flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-end', gap: 10, marginTop: 12, marginBottom: 8 },
   podiumSlot: { flex: 1, alignItems: 'center' },

@@ -4,6 +4,10 @@
 // minutes; each threshold is tracked per-game (games.reminder_4h_sent_at /
 // reminder_30m_sent_at) so a game is only ever notified once per threshold
 // even though the cron sweeps far more often than the windows are wide.
+//
+// Also sweeps for "your game's pool rolled over" notifications (see
+// 20260722060000_prize_pool_rollover.sql) on the same 5-minute cadence -
+// cheap to piggyback on rather than standing up a second schedule.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const MODE_LABELS: Record<string, string> = {
@@ -100,6 +104,57 @@ async function processWindow(
   return { gamesNotified, pushesSent, errors };
 }
 
+// Notifies a void (no-winner) game's players that its pool rolled over into a
+// new tournament. Event-triggered (payout_game sets rolled_over_to_game_id the
+// moment it happens), not time-windowed like the reminders above, but reuses
+// the same idempotent *_notified_at + due-list-RPC + mark-sent-RPC shape so it
+// rides the same 5-minute cron instead of needing its own schedule.
+async function processRollovers(
+  admin: ReturnType<typeof createClient>
+): Promise<{ gamesNotified: number; pushesSent: number; errors: string[] }> {
+  const { data: games, error } = await admin.rpc("games_due_for_rollover_notification");
+  if (error) return { gamesNotified: 0, pushesSent: 0, errors: [error.message] };
+
+  let gamesNotified = 0;
+  let pushesSent = 0;
+  const errors: string[] = [];
+
+  for (const game of (games ?? []) as {
+    void_game_id: string;
+    mode: string;
+    pool_rollover_amount_cents: number;
+    rolled_over_to_game_id: string;
+  }[]) {
+    const { data: tokenRows, error: tokErr } = await admin.rpc("list_push_tokens_for_game", {
+      p_game_id: game.void_game_id,
+    });
+    if (tokErr) {
+      errors.push(`${game.void_game_id}: ${tokErr.message}`);
+      continue;
+    }
+    const modeLabel = MODE_LABELS[game.mode] ?? game.mode;
+    const amount = (game.pool_rollover_amount_cents / 100).toFixed(2);
+    const messages: ExpoMessage[] = ((tokenRows ?? []) as { user_id: string; expo_push_token: string }[]).map((r) => ({
+      to: r.expo_push_token,
+      title: `🔄 Pool rolled over!`,
+      body: `That ${modeLabel} tournament didn't have an eligible winner, so the $${amount} pool carried into a new one - come sign up.`,
+      sound: "default",
+      data: { voidGameId: game.void_game_id, rolledOverToGameId: game.rolled_over_to_game_id, kind: "pool_rollover" },
+    }));
+
+    if (messages.length > 0) {
+      const result = await sendExpoPushBatch(messages);
+      pushesSent += result.sent;
+      errors.push(...result.errors);
+    }
+
+    await admin.rpc("mark_rollover_notified", { p_game_id: game.void_game_id });
+    gamesNotified++;
+  }
+
+  return { gamesNotified, pushesSent, errors };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -136,11 +191,13 @@ Deno.serve(async (req: Request) => {
 
     const fourHour = await processWindow(admin, 240, "4h");
     const thirtyMin = await processWindow(admin, 30, "30m");
+    const rollovers = await processRollovers(admin);
 
     return new Response(
       JSON.stringify({
         fourHourReminders: fourHour,
         thirtyMinReminders: thirtyMin,
+        poolRollovers: rollovers,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

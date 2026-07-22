@@ -2,8 +2,15 @@ import { Linking, Platform, Share } from 'react-native';
 import { showAlert } from './alert';
 import { money } from '../theme';
 
+// The live player web app (see website/index.html's PPT_CONFIG.appUrl - keep
+// these in sync; there's no shared config between the two projects yet).
+// ?ref= is read by UsernamePickerScreen and prefills the referral code field
+// so a tapped link actually gets a new player to the "where do I enter this"
+// step instead of just handing them a code with nowhere to put it.
+const APP_URL = 'https://playerapp-alpha.vercel.app';
+
 export function referralMessage(code: string, rewardCents: number): string {
-  return `Join me on Penny Pinching Trivia! Use my code ${code} and we both earn ${money(rewardCents)} in tokens once you play. 🧠💸`;
+  return `Join me on Penny Pinching Trivia! Use my code ${code} and we both earn ${money(rewardCents)} in tokens once you play. Sign up here: ${APP_URL}/?ref=${code} 🧠💸`;
 }
 
 async function openOrFallback(url: string, message: string, label: string) {

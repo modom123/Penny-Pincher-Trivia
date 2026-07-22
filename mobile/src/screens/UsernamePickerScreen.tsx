@@ -1,9 +1,19 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { Platform, View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { showAlert } from '../lib/alert';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme';
+
+// A referral link (see mobile/src/lib/referral.ts) is a plain web URL with
+// ?ref=CODE - there's no native app yet to intercept it as a universal/app
+// link, so this just reads the query string the page was already loaded
+// with. It survives navigating from AuthScreen to here because this is a
+// client-side SPA route change, not a full page reload.
+function referralCodeFromUrl(): string {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return '';
+  return new URLSearchParams(window.location.search).get('ref')?.toUpperCase() ?? '';
+}
 
 // Shown right after sign-in when the account has no chosen username yet
 // (mainly Google/OAuth players). A unique handle is required so players can be
@@ -11,7 +21,7 @@ import { theme } from '../theme';
 export default function UsernamePickerScreen() {
   const { refreshUsername, signOut } = useAuth();
   const [username, setUsername] = useState('');
-  const [referralCode, setReferralCode] = useState('');
+  const [referralCode, setReferralCode] = useState(referralCodeFromUrl);
   const [busy, setBusy] = useState(false);
 
   async function save() {
@@ -62,6 +72,7 @@ export default function UsernamePickerScreen() {
         value={referralCode}
         onChangeText={setReferralCode}
       />
+      {referralCode.length > 0 && <Text style={styles.referralHint}>You'll both get a bonus once you play your first round.</Text>}
       <Pressable style={[styles.button, busy && styles.buttonDisabled]} onPress={save} disabled={busy}>
         <Text style={styles.buttonText}>{busy ? 'Saving…' : 'Continue'}</Text>
       </Pressable>
@@ -85,6 +96,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 16,
   },
+  referralHint: { color: theme.emerald, fontSize: 12, marginTop: -6, marginBottom: 12, textAlign: 'center' },
   button: { backgroundColor: theme.gold, borderRadius: 999, paddingVertical: 15, marginTop: 4 },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: theme.bg, textAlign: 'center', fontWeight: '800', fontSize: 16 },

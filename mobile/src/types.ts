@@ -23,6 +23,11 @@ export type GameCompletedPayload = {
   totalPrizePoolCents: number;
   adminRevenuePoolCents: number;
   payouts: { userId: string; username?: string; place: number; amountCents: number; totalScore: number }[];
+  // No eligible winner (e.g. everyone ran out of tokens before round 100) -
+  // payout_game creates a similarly-configured replacement game and seeds its
+  // pool with this one's, rather than the money just sitting unpaid forever.
+  noWinner?: boolean;
+  rolloverGameId?: string | null;
 };
 
 export type ChatMessage = {
