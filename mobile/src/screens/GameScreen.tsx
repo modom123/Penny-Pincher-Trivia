@@ -216,7 +216,7 @@ export default function GameScreen({ route, navigation }: Props) {
     });
     if (error) {
       setSelected(null);
-      showAlert("Couldn't submit answer", error.message);
+      showAlert("Couldn't submit answer", error.message.replace(/^[A-Z_]+:\s*/, ''));
       return;
     }
     setPhase('answered');

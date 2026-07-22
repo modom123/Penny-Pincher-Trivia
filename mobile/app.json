@@ -31,7 +31,7 @@
       "favicon": "./assets/favicon.png",
       "backgroundColor": "#0b0f1a",
       "themeColor": "#1160f0",
-      "description": "Penny Pinching Trivia — a 100-round progressive skill-trivia contest. Play from TX & CA."
+      "description": "Penny Pinching Trivia — a 100-round progressive skill-trivia contest. Now live in 28 states."
     },
     "extra": {
       "supabaseUrl": "https://pkvdthwqvjpxhqorfpub.supabase.co",
