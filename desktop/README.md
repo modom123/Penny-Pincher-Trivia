@@ -36,14 +36,13 @@ npm run dist   # runs electron-builder - produces a .dmg (mac) / installer (win)
   tries to `window.open` to the system browser instead - this is also how
   Google's OAuth consent screen gets opened (see below).
 - `will-navigate` blocks the app window from being navigated to an untrusted
-  origin. Only the local bundle (`file://`) and first-party Stripe surfaces
-  (`checkout.stripe.com`, `js.stripe.com`, `connect.stripe.com`,
-  `verify.stripe.com` - checkout, Connect onboarding, and Identity
-  verification) can navigate in place - Stripe doesn't mind rendering inside
-  an embedded webview. Everything else opens in
-  the system browser rather than hijacking the app window. Update the
-  `ALLOWED_NAVIGATION_HOSTS` list in `main.js` if a new trusted in-window
-  redirect target is added.
+  origin. Only the local bundle (`file://`) and Trustly's hosted
+  bank-authorization page (`trustly.one`/`sandbox.trustly.one` - covers
+  deposits, withdrawals, and identity verification, all through the same
+  flow) can navigate in place - Trustly doesn't mind rendering inside an
+  embedded webview. Everything else opens in the system browser rather than
+  hijacking the app window. Update the `ALLOWED_NAVIGATION_HOSTS` list in
+  `main.js` if a new trusted in-window redirect target is added.
 
 ## Google sign-in (and why it doesn't just navigate the window)
 
@@ -75,18 +74,18 @@ and instead:
 URL Configuration -> Redirect URLs in the dashboard. Without it Supabase will
 reject the redirect and sign-in will fail after the Google consent screen.
 
-## Stripe checkout on desktop
+## Trustly bank linking on desktop
 
-`create-checkout-session`'s `success_url`/`cancel_url` are fixed `https://`
-URLs computed server-side from `APP_PUBLIC_URL` (not from `window.location`),
-so they were never actually broken by packaging. What differs on desktop:
-Stripe checkout itself opens in the app window (`checkout.stripe.com` is
-allowlisted), but its return to `success_url` is not an allowlisted host, so
-`will-navigate` sends that hop to the system browser instead of reloading the
-app - meaning the web build's `/wallet/success` polling effect
-(`WalletScreen.tsx`) never fires here. Instead, `WalletScreen` refreshes the
-balance whenever the Electron window regains focus (`onWindowFocus` from the
-bridge), which covers the common case of alt-tabbing back after paying.
+`trustly-establish-bank-auth`'s `returnUrl` is a fixed `https://` URL computed
+server-side from `APP_PUBLIC_URL` (not from `window.location`), so it was
+never actually broken by packaging. What differs on desktop: Trustly's hosted
+page opens in the app window (`trustly.one` is allowlisted), but its return
+to that URL is not an allowlisted host, so `will-navigate` sends that hop to
+the system browser instead of reloading the app - meaning the web build's
+`/wallet/trustly-return` polling effect (`WalletScreen.tsx`) never fires
+here. Instead, `WalletScreen` refreshes the balance whenever the Electron
+window regains focus (`onWindowFocus` from the bridge), which covers the
+common case of alt-tabbing back after linking/paying.
 
 ## Known gaps
 

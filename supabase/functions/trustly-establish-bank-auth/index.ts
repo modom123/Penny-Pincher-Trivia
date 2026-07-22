@@ -1,12 +1,17 @@
 // Starts Trustly's "Pay by Bank" deferred-payment flow: creates an
 // unauthorized transaction and returns a hosted URL for the player to
 // authorize their bank account (same "go complete this on a processor-hosted
-// page, then come back" shape as create-checkout-session/connect-onboarding).
+// page, then come back" shape used elsewhere for hosted-flow integrations).
 // Once the player authorizes with their bank, Trustly redirects them back to
 // returnUrl with ?transactionId=... appended - see trustly-confirm-bank-auth,
-// which verifies that id with Trustly server-side before trusting it (the
-// same "never trust the client-side redirect alone" rule stripe-webhook
-// follows for payments).
+// which verifies that id with Trustly server-side before trusting it (never
+// trust a client-supplied redirect param alone).
+//
+// kycType: 1 also enrolls this authorization in Trustly ID - the same bank
+// login that authorizes payments additionally returns bank-verified identity
+// data (name/address/dateOfBirth + an OFAC/PEP-screening `eligible` flag),
+// which trustly-confirm-bank-auth uses to satisfy KYC via apply_kyc_result.
+// One flow now does both jobs instead of needing a separate identity vendor.
 //
 // *** VERIFY BEFORE REAL USE ***
 // Built from cross-referenced public documentation (docs.trustly.com,
@@ -87,6 +92,11 @@ Deno.serve(async (req: Request) => {
         notificationUrl: `${supabaseUrl}/functions/v1/trustly-webhook`,
         // Player lands back here with ?transactionId=... appended.
         returnUrl: `${appUrl}/wallet/trustly-return`,
+        // VERIFY: enrolls in Trustly ID per amer.developers.trustly.com's
+        // establishData docs ("add kycType with a value of 1") - exact field
+        // name/placement (top-level vs nested under an establishData object)
+        // not confirmed against a real request/response.
+        kycType: 1,
       }),
     });
 

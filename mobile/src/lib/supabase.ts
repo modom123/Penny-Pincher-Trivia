@@ -21,7 +21,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 // supabase.functions.invoke()'s error.message is always the generic
 // "Edge Function returned a non-2xx status code" - the real reason our edge
-// functions send back (e.g. "Stripe Identity error: ...") lives in
+// functions send back (e.g. "Trustly establish error: ...") lives in
 // error.context, the raw Response, and has to be read separately.
 export async function edgeFunctionErrorMessage(error: unknown): Promise<string> {
   const withContext = error as { context?: Response; message?: string };

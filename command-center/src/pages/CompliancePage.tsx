@@ -19,7 +19,6 @@ export default function CompliancePage() {
   const [blockedStates, setBlockedStates] = useState('');
   const [allowedStates, setAllowedStates] = useState('');
   const [geofenceEnabled, setGeofenceEnabled] = useState(true);
-  const [paymentProcessor, setPaymentProcessor] = useState<'stripe' | 'trustly'>('stripe');
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [kycFilter, setKycFilter] = useState('pending');
@@ -40,15 +39,13 @@ export default function CompliancePage() {
     const { data: cfg } = await supabase
       .from('platform_config')
       .select('key, value')
-      .in('key', ['blocked_states', 'allowed_states', 'geofence_enabled', 'payment_processor']);
+      .in('key', ['blocked_states', 'allowed_states', 'geofence_enabled']);
     const blocked = cfg?.find((c) => c.key === 'blocked_states')?.value as string[] | undefined;
     const allowed = cfg?.find((c) => c.key === 'allowed_states')?.value as string[] | undefined;
     const geofence = cfg?.find((c) => c.key === 'geofence_enabled')?.value as boolean | undefined;
-    const processor = cfg?.find((c) => c.key === 'payment_processor')?.value as 'stripe' | 'trustly' | undefined;
     if (blocked) setBlockedStates(blocked.join(', '));
     if (allowed) setAllowedStates(allowed.join(', '));
     setGeofenceEnabled(geofence ?? true);
-    setPaymentProcessor(processor ?? 'stripe');
   }, []);
 
   const loadKyc = useCallback(async () => {
@@ -131,25 +128,6 @@ export default function CompliancePage() {
     }
   }
 
-  async function changePaymentProcessor(processor: 'stripe' | 'trustly') {
-    setBusy(true);
-    setMessage(null);
-    try {
-      const { error } = await supabase.rpc('admin_set_payment_processor', { p_processor: processor });
-      if (error) throw error;
-      setPaymentProcessor(processor);
-      setMessage(
-        processor === 'trustly'
-          ? 'Switched to Trustly. New deposits/withdrawals now go through bank-to-bank transfer - existing Stripe-linked players are unaffected until they use the new flow.'
-          : 'Switched back to Stripe.'
-      );
-    } catch (err) {
-      setMessage(`Error: ${(err as Error).message}`);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function saveAllowedStates() {
     setBusy(true);
     setMessage(null);
@@ -195,25 +173,14 @@ export default function CompliancePage() {
       </div>
 
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0 }}>Payment Processor</h3>
-          <select
-            value={paymentProcessor}
-            disabled={busy}
-            onChange={(e) => changePaymentProcessor(e.target.value as 'stripe' | 'trustly')}
-          >
-            <option value="stripe">Stripe</option>
-            <option value="trustly">Trustly (Pay by Bank)</option>
-          </select>
-        </div>
+        <h3 style={{ margin: 0 }}>Payment Processor: Trustly (Pay by Bank)</h3>
         <p style={{ color: '#9a9aa5', fontSize: 13 }}>
-          Which rail new deposits and withdrawals use. Switching does not affect existing
-          Stripe-linked players' history - it only changes what the wallet screen offers for
-          <strong> new</strong> purchases/payouts going forward. <strong>Trustly is unverified</strong> -
-          it was built from cross-referenced public docs, not a live sandbox (see the
-          "VERIFY" comments across <code>supabase/functions/trustly-*</code>). Do not switch to
-          it for real players until someone with Trustly sandbox access has confirmed the
-          request/response shapes and notification signing scheme.
+          Deposits, withdrawals, and identity verification all go through Trustly's bank-linking
+          flow. <strong>This integration is unverified</strong> - it was built from cross-referenced
+          public docs, not a live sandbox (see the "VERIFY" comments across{' '}
+          <code>supabase/functions/trustly-*</code>). Do not process real transactions until
+          someone with Trustly sandbox access has confirmed the request/response shapes and
+          notification signing scheme.
         </p>
       </div>
 
@@ -258,9 +225,9 @@ export default function CompliancePage() {
           </select>
         </div>
         <p style={{ color: '#9a9aa5', fontSize: 13 }}>
-          Verification normally flows in automatically from the KYC vendor (Persona/Stripe Identity) via the{' '}
-          <code>kyc-webhook</code> function. Manual override here is for edge cases only - it's the gate on withdrawals
-          (verified + 18+ required).
+          Verification normally flows in automatically via Trustly ID when a player links their bank account
+          (<code>trustly-confirm-bank-auth</code>). Manual override here is for edge cases only - it's the gate on
+          withdrawals (verified + 18+ required).
         </p>
         <table>
           <thead>

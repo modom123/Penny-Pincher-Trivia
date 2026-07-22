@@ -1,5 +1,8 @@
-// KYC webhook receiver. Shaped for Persona / Stripe Identity - both POST a
-// verification result with the user's reference and (on success) verified DOB.
+// Generic KYC webhook receiver for any vendor that POSTs a verification
+// result asynchronously (e.g. Persona). Trustly ID does NOT use this - its
+// result is fetched synchronously inside trustly-confirm-bank-auth instead,
+// since it's returned directly from a GET call rather than pushed via
+// webhook. Kept as an option for a future/alternate KYC vendor.
 // verify_jwt is disabled (the vendor doesn't send a Supabase JWT); authenticity
 // is instead a shared-secret header check. Never skip that check in production.
 //

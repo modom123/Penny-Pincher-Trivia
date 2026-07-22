@@ -2,16 +2,24 @@
 // authorizing their bank with Trustly (see trustly-establish-bank-auth's
 // returnUrl, which gets ?transactionId=... appended). Deliberately does NOT
 // trust that query param at face value - it re-checks the transaction's
-// status directly with Trustly before storing it, the same "never trust the
-// client-side redirect alone" rule the Stripe integration follows (the
-// wallet is only ever credited from stripe-webhook, never a client redirect).
+// status directly with Trustly before storing it (never trust a
+// client-supplied redirect param alone - the wallet/KYC state should only
+// ever change from a value this function itself fetched from Trustly).
+//
+// Also completes KYC in the same step: since trustly-establish-bank-auth
+// requested kycType: 1, an authorized transaction has bank-verified identity
+// data available via a GET call - fetched here and applied through
+// apply_kyc_result (the same provider-agnostic function any KYC vendor uses),
+// gated on Trustly's `eligible` flag (their OFAC/SDN/PEP screening result).
 //
 // *** VERIFY BEFORE REAL USE *** - see trustly-establish-bank-auth's header
 // comment for the general caveat. Specifically here: the exact path/shape of
-// a transaction-status lookup (used here: GET {base}/transactions/{id}) and
-// what field/value indicates a successfully authorized mandate (used here:
-// status === "AUTHORIZED", tried case-insensitively) are not confirmed
-// against Trustly's real reference docs.
+// a transaction-status lookup (used here: GET {base}/transactions/{id}), what
+// field/value indicates a successfully authorized mandate (used here:
+// status === "AUTHORIZED", tried case-insensitively), and the Trustly ID user-data
+// endpoint/response shape (used here: GET {base}/transactions/{id}/user,
+// expecting firstName/lastName or name, dateOfBirth, eligible) are not
+// confirmed against Trustly's real reference docs.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -104,7 +112,35 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    return new Response(JSON.stringify({ linked: true }), {
+    // Trustly ID: this authorization was requested with kycType: 1, so
+    // bank-verified identity data should be available now. Best-effort - a
+    // failure here shouldn't undo the bank link that already succeeded above;
+    // the player just stays kyc_status='unverified' and can be retried.
+    let kycApplied = false;
+    try {
+      const idRes = await fetch(`${apiBase}/transactions/${encodeURIComponent(body.transactionId)}/user`, {
+        headers: { authorization: `Basic ${btoa(`${accessId}:${accessKey}`)}` },
+      });
+      if (idRes.ok) {
+        const idData = await idRes.json();
+        const eligible = idData.eligible !== false; // treat missing field as pass-through, explicit false as a hit
+        const dob = idData.dateOfBirth ?? idData.date_of_birth ?? null;
+        const { error: kycError } = await admin.rpc("apply_kyc_result", {
+          p_user_id: user.id,
+          p_status: eligible ? "verified" : "rejected",
+          p_provider_ref: body.transactionId,
+          p_date_of_birth: dob,
+        });
+        kycApplied = !kycError;
+        if (kycError) console.error("apply_kyc_result (trustly id) failed:", kycError);
+      } else {
+        console.error("Trustly ID user-data fetch failed:", await idRes.text());
+      }
+    } catch (idErr) {
+      console.error("Trustly ID user-data fetch error:", (idErr as Error).message);
+    }
+
+    return new Response(JSON.stringify({ linked: true, kycApplied }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

@@ -1,8 +1,9 @@
 // Minimal bridge for the two things the packaged app needs that a plain web
 // page can't do: receiving the OAuth deep-link callback (Google sign-in can't
 // redirect to a file:// origin) and knowing when the window regains focus
-// (so the wallet balance can refresh after a Stripe checkout completes in the
-// system browser). No other Node/Electron API is exposed to the renderer.
+// (so the wallet balance can refresh after a Trustly bank-authorization
+// completes in the system browser). No other Node/Electron API is exposed to
+// the renderer.
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronBridge', {

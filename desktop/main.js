@@ -1,22 +1,24 @@
 const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 
-// Domains the app window is allowed to navigate to in-place: Stripe's hosted
-// checkout (wallet top-ups), Connect onboarding (linking a payout account),
-// and Identity verification (KYC) - all first-party Stripe surfaces that
-// don't mind rendering inside an embedded webview. Google OAuth deliberately
-// does NOT navigate the app window at all (see AuthContext.signInWithGoogle):
-// Google blocks its consent screen outright inside embedded/WebView user
-// agents like this one, so that flow opens in the user's real system browser
-// and only ever hands this window a pennypincher:// deep link at the very
-// end. Anything not in this list tries to hijack the window instead of
-// opening a real link, so it gets sent to the system browser instead - see
-// will-navigate below.
+// Domains the app window is allowed to navigate to in-place: Trustly's
+// hosted bank-authorization page (wallet top-ups, payouts, and identity
+// verification all go through this one flow - see trustly-establish-bank-auth)
+// - a first-party Trustly surface that doesn't mind rendering inside an
+// embedded webview. Google OAuth deliberately does NOT navigate the app
+// window at all (see AuthContext.signInWithGoogle): Google blocks its
+// consent screen outright inside embedded/WebView user agents like this one,
+// so that flow opens in the user's real system browser and only ever hands
+// this window a pennypincher:// deep link at the very end. Anything not in
+// this list tries to hijack the window instead of opening a real link, so it
+// gets sent to the system browser instead - see will-navigate below.
+//
+// VERIFY: trustly.one is confirmed as Trustly's hosted-flow domain (sandbox
+// is sandbox.trustly.one); confirm the exact production hostname their
+// establish response actually redirects to before shipping a desktop build.
 const ALLOWED_NAVIGATION_HOSTS = [
-  'checkout.stripe.com',
-  'js.stripe.com',
-  'connect.stripe.com',
-  'verify.stripe.com',
+  'trustly.one',
+  'sandbox.trustly.one',
 ];
 
 // Custom protocol Supabase's OAuth callback redirects to instead of an https

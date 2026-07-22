@@ -28,7 +28,7 @@ function getElectronBridge(): ElectronBridge | undefined {
 }
 
 // The Electron shell's window never reloads with the OAuth callback in its
-// URL (Google/Stripe can't redirect to file://, so Supabase redirects to a
+// URL (Google/Trustly can't redirect to file://, so Supabase redirects to a
 // pennypincher:// deep link instead - see desktop/main.js), so nothing here
 // can rely on detectSessionInUrl. Handle both flow types the client might be
 // configured for: PKCE (a `code` param) and implicit (tokens in the hash).

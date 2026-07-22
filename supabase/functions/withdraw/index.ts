@@ -1,16 +1,14 @@
-// Withdraws real money out of the app via whichever processor is active
-// (platform_config.payment_processor - see reserve_withdrawal). Two-phase:
-// reserve_withdrawal atomically debits the wallet first (so a user can never
-// withdraw the same balance twice even under concurrent requests), then the
-// processor is called; on failure the reservation is refunded.
+// Withdraws real money out of the app via Trustly. Two-phase: reserve_withdrawal
+// atomically debits the wallet first (so a user can never withdraw the same
+// balance twice even under concurrent requests), then Trustly is called; on
+// failure the reservation is refunded.
 //
-// Trustly path: *** VERIFY BEFORE REAL USE *** - same caveat as every other
-// Trustly call in this repo (see trustly-establish-bank-auth's header
-// comment). Terminology reminder: Trustly's "Deposit" endpoint is THIS
-// direction (funds TO the end user) - not to be confused with our own
-// "deposit" (buying tokens), which is trustly-create-deposit's Capture call.
+// *** VERIFY BEFORE REAL USE *** - see trustly-establish-bank-auth's header
+// comment for the general caveat. Terminology reminder: Trustly's "Deposit"
+// endpoint is THIS direction (funds TO the end user) - not to be confused
+// with our own "deposit" (buying tokens), which is trustly-create-deposit's
+// Capture call.
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import Stripe from "npm:stripe@16";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,6 +18,16 @@ const corsHeaders = {
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  const accessId = Deno.env.get("TRUSTLY_ACCESS_ID");
+  const accessKey = Deno.env.get("TRUSTLY_ACCESS_KEY");
+  const apiBase = Deno.env.get("TRUSTLY_API_BASE_URL") ?? "https://sandbox.trustly.one/api/v1";
+  if (!accessId || !accessKey) {
+    return new Response(JSON.stringify({ error: "Trustly is not configured (missing TRUSTLY_ACCESS_ID/ACCESS_KEY)." }), {
+      status: 503,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   const authHeader = req.headers.get("Authorization");
@@ -63,79 +71,38 @@ Deno.serve(async (req: Request) => {
 
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-  if (reservation.processor === "trustly") {
-    const accessId = Deno.env.get("TRUSTLY_ACCESS_ID");
-    const accessKey = Deno.env.get("TRUSTLY_ACCESS_KEY");
-    const apiBase = Deno.env.get("TRUSTLY_API_BASE_URL") ?? "https://sandbox.trustly.one/api/v1";
-    if (!accessId || !accessKey) {
-      await admin.rpc("refund_withdrawal", { p_ledger_id: reservation.ledgerId });
-      return new Response(JSON.stringify({ error: "Trustly is not configured (missing TRUSTLY_ACCESS_ID/ACCESS_KEY)." }), {
-        status: 503,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    try {
-      // VERIFY: path/fields per docs.trustly.com/api/withdraw's description
-      // of the "Deposit" (funds-to-user) side - not confirmed against a real
-      // sandbox response.
-      const res = await fetch(
-        `${apiBase}/transactions/${encodeURIComponent(reservation.trustlyTransactionId)}/deposit`,
-        {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            authorization: `Basic ${btoa(`${accessId}:${accessKey}`)}`,
-          },
-          body: JSON.stringify({
-            amount: (reservation.amountCents / 100).toFixed(2),
-            currency: "USD",
-            notificationUrl: `${Deno.env.get("SUPABASE_URL")}/functions/v1/trustly-webhook`,
-            metadata: { ledgerId: reservation.ledgerId },
-          }),
-        }
-      );
-      const data = await res.json();
-      if (!res.ok) throw new Error(JSON.stringify(data));
-
-      // Final confirmation comes from trustly-webhook's payoutconfirmation
-      // handler, which calls settle_withdrawal with processor='trustly' -
-      // this just records that the payout request was accepted.
-      return new Response(JSON.stringify({ success: true, status: "pending", payoutId: data.id ?? data.payoutId }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    } catch (err) {
-      await admin.rpc("refund_withdrawal", { p_ledger_id: reservation.ledgerId });
-      return new Response(JSON.stringify({ error: `Trustly payout failed: ${(err as Error).message}` }), {
-        status: 502,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-  }
-
-  const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-  if (!stripeKey) {
-    await admin.rpc("refund_withdrawal", { p_ledger_id: reservation.ledgerId });
-    return new Response(JSON.stringify({ error: "Stripe is not configured (missing STRIPE_SECRET_KEY)." }), {
-      status: 503,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-  const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
-
   try {
-    const transfer = await stripe.transfers.create({
-      amount: reservation.amountCents,
-      currency: "usd",
-      destination: reservation.connectAccountId,
-    });
-    await admin.rpc("settle_withdrawal", { p_ledger_id: reservation.ledgerId, p_ref: transfer.id });
-    return new Response(JSON.stringify({ success: true, transferId: transfer.id }), {
+    // VERIFY: path/fields per docs.trustly.com/api/withdraw's description of
+    // the "Deposit" (funds-to-user) side - not confirmed against a real
+    // sandbox response.
+    const res = await fetch(
+      `${apiBase}/transactions/${encodeURIComponent(reservation.trustlyTransactionId)}/deposit`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Basic ${btoa(`${accessId}:${accessKey}`)}`,
+        },
+        body: JSON.stringify({
+          amount: (reservation.amountCents / 100).toFixed(2),
+          currency: "USD",
+          notificationUrl: `${Deno.env.get("SUPABASE_URL")}/functions/v1/trustly-webhook`,
+          metadata: { ledgerId: reservation.ledgerId },
+        }),
+      }
+    );
+    const data = await res.json();
+    if (!res.ok) throw new Error(JSON.stringify(data));
+
+    // Final confirmation comes from trustly-webhook's payoutconfirmation
+    // handler, which calls settle_withdrawal - this just records that the
+    // payout request was accepted.
+    return new Response(JSON.stringify({ success: true, status: "pending", payoutId: data.id ?? data.payoutId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
     await admin.rpc("refund_withdrawal", { p_ledger_id: reservation.ledgerId });
-    return new Response(JSON.stringify({ error: `Stripe transfer failed: ${(err as Error).message}` }), {
+    return new Response(JSON.stringify({ error: `Trustly payout failed: ${(err as Error).message}` }), {
       status: 502,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
