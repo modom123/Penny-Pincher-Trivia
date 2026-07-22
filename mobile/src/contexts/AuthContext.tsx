@@ -160,7 +160,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const redirectTo = bridge
           ? 'pennypincher://auth-callback'
           : Platform.OS === 'web'
-            ? window.location.origin + window.location.pathname
+            // Preserves ?ref=CODE (and anything else in the query string) across
+            // the OAuth round trip - dropping it here silently lost every
+            // referral code for anyone who signed up with Google instead of
+            // email/password, since UsernamePickerScreen reads it back out of
+            // window.location.search once Google redirects back to this URL.
+            ? window.location.origin + window.location.pathname + window.location.search
             : undefined;
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',

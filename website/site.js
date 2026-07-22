@@ -4,10 +4,20 @@
 (function () {
   var cfg = window.PPT_CONFIG || {};
   var app = cfg.appUrl || '#';
+  // Carries ?ref=CODE (if this page was loaded from a referral link) through
+  // to the app link - otherwise a shared marketing-site link like
+  // pennypinchertrivia.com/?ref=CODE would drop the code the moment someone
+  // clicked "Play now", since that's a full navigation to a different origin
+  // and the app only reads the code from its own URL's query string.
+  var ref = new URLSearchParams(window.location.search).get('ref');
+  function withRef(url) {
+    if (!ref || url === '#') return url;
+    return url + (url.indexOf('?') === -1 ? '?' : '&') + 'ref=' + encodeURIComponent(ref);
+  }
   var dest = {
-    app: app,
-    appstore: cfg.appStoreUrl || app,
-    playstore: cfg.playStoreUrl || app
+    app: withRef(app),
+    appstore: withRef(cfg.appStoreUrl || app),
+    playstore: withRef(cfg.playStoreUrl || app)
   };
   var links = document.querySelectorAll('[data-cta]');
   for (var i = 0; i < links.length; i++) {

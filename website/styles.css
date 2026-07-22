@@ -267,6 +267,19 @@ img{max-width:100%}
 .token-amt{font-weight:800;color:var(--ink);margin-top:2px}
 .token-bonus{margin-top:6px;color:#17a55a;font-weight:800;font-size:.9rem}
 
+/* refer & earn */
+.refer-tool{max-width:640px;margin:0 auto;background:#fff;border-radius:22px;
+  padding:28px clamp(18px,4vw,32px);box-shadow:var(--shadow);text-align:center}
+.refer-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.refer-input{flex:1 1 280px;min-width:0;border:2px solid #dfe8fb;border-radius:12px;
+  padding:12px 16px;font-family:var(--font-body);font-size:1rem;font-weight:700;
+  color:var(--ink);background:var(--paper)}
+.refer-input:focus{outline:2px solid var(--blue-1)}
+.refer-result{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;
+  margin-top:16px;padding:12px 16px;background:var(--paper);border-radius:12px}
+.refer-link-text{font-weight:800;color:var(--blue-3);word-break:break-all}
+.refer-hint{margin:18px 0 0;color:var(--ink-soft);font-weight:700;font-size:.92rem}
+
 /* final CTA */
 .cta-band{background:linear-gradient(160deg,var(--pink),var(--gold-2));
   border-radius:28px;color:#fff;text-align:center;max-width:1060px;

@@ -46,6 +46,7 @@
       <a href="#modes">Game modes</a>
       <a href="#how">How it works</a>
       <a href="#tokens">Tokens</a>
+      <a href="#refer">Refer &amp; earn</a>
       <a class="nav-cta" data-cta="app" href="/app">Play now</a>
     </nav>
   </header>
@@ -222,6 +223,24 @@
       </div>
     </section>
 
+    <!-- REFER & EARN -->
+    <section class="section" id="refer">
+      <h2 class="section-title">Refer a friend, earn together <span class="squig"></span></h2>
+      <p class="section-sub">Already playing? Paste your code below to grab your shareable link — no need to open the app.</p>
+      <div class="refer-tool">
+        <div class="refer-row">
+          <input id="referCodeInput" class="refer-input" type="text" maxlength="20"
+                 placeholder="Your referral code (from the app's Refer &amp; Earn tab)" autocapitalize="characters" autocomplete="off" />
+          <button id="referGenerateBtn" class="btn btn-gold btn-sm" type="button">Get my link</button>
+        </div>
+        <div id="referLinkResult" class="refer-result" hidden>
+          <span id="referLinkText" class="refer-link-text"></span>
+          <button id="referCopyBtn" class="btn btn-blue btn-sm" type="button">Copy</button>
+        </div>
+        <p class="refer-hint">When a friend signs up with your link and plays their first round, you <b>both</b> get $5.00 in tokens.</p>
+      </div>
+    </section>
+
     <!-- FINAL CTA -->
     <section class="section cta-band" id="get">
       <h2 class="cta-title">Think you've got the smarts? 🧠</h2>
@@ -248,5 +267,6 @@
   <script src="site.js"></script>
   <script src="countdown.js"></script>
   <script src="trivia.js"></script>
+  <script src="refer.js"></script>
 </body>
 </html>
