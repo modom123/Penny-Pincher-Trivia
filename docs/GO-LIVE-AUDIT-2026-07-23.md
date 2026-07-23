@@ -64,10 +64,12 @@ Owner key: 🧑 business/legal decision · 🔧 engineering · 🔑 vendor accou
       Stripe-implemented-but-restricted (Trustly is a plan, not a build), and the
       §3.11 rollover is designed but not implemented. Never send counsel a
       description of a system that doesn't exist.
-- [ ] 🔧 Fix the orphaned-pool bug NOW, independent of the rollover design: a
-      zero-winner game must do something explicit with its pool (minimum viable:
-      refund entries pro-rata; target: the §3.11 weekly rollover). This is player
-      money with no owner — it's a liability bug even in soft launch.
+- [x] 🔧 ~~Fix the orphaned-pool bug~~ **DONE 2026-07-23**
+      (`20260723010000_zero_winner_pool_refund_and_geofence_lock.sql`): a
+      zero-winner game now refunds its pool pro-rata by each player's cash
+      contribution (`pool_refund` ledger entries, withdrawable cash, winnings
+      counter untouched). The §3.11 weekly rollover may replace this after
+      counsel review; refund remains the fallback.
 
 ### GATE B — Payment rail (existential blocker)
 
@@ -110,10 +112,12 @@ Owner key: 🧑 business/legal decision · 🔧 engineering · 🔑 vendor accou
 - [ ] 🔧 Responsible-play minimums per counsel: deposit/spend limits,
       self-exclusion + cooling-off, problem-gambling resource link. **Currently
       none of this exists in the codebase** (audited: no matching schema or UI).
-- [ ] 🔧 Lock the geofence master switch for production: `admin_update_geofence_enabled(false)`
-      currently lets a single staff account disable ALL location checks at
-      runtime. Gate it (env guard in production, or two-person rule) so the
-      soft-launch convenience can't become a compliance incident.
+- [x] 🔧 ~~Lock the geofence master switch~~ **DONE 2026-07-23** (same
+      migration): `admin_lock_geofence()` is a one-way production lock (admin
+      role, Command Center button) that forces geofencing on;
+      `admin_update_geofence_enabled(false)` raises `GEOFENCE_LOCKED` while
+      locked; no unlock path exists for authenticated users (service-role SQL
+      only). **Operational step remaining: press the lock before real money.**
 - [ ] 🔧 Real question bank at launch depth (100 placeholder questions seeded;
       target per blueprint is 10k human-reviewed).
 

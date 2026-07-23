@@ -19,6 +19,7 @@ export default function CompliancePage() {
   const [blockedStates, setBlockedStates] = useState('');
   const [allowedStates, setAllowedStates] = useState('');
   const [geofenceEnabled, setGeofenceEnabled] = useState(true);
+  const [geofenceLocked, setGeofenceLocked] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [kycFilter, setKycFilter] = useState('pending');
@@ -39,13 +40,15 @@ export default function CompliancePage() {
     const { data: cfg } = await supabase
       .from('platform_config')
       .select('key, value')
-      .in('key', ['blocked_states', 'allowed_states', 'geofence_enabled']);
+      .in('key', ['blocked_states', 'allowed_states', 'geofence_enabled', 'geofence_production_lock']);
     const blocked = cfg?.find((c) => c.key === 'blocked_states')?.value as string[] | undefined;
     const allowed = cfg?.find((c) => c.key === 'allowed_states')?.value as string[] | undefined;
     const geofence = cfg?.find((c) => c.key === 'geofence_enabled')?.value as boolean | undefined;
+    const locked = cfg?.find((c) => c.key === 'geofence_production_lock')?.value as boolean | undefined;
     if (blocked) setBlockedStates(blocked.join(', '));
     if (allowed) setAllowedStates(allowed.join(', '));
     setGeofenceEnabled(geofence ?? true);
+    setGeofenceLocked(locked ?? false);
   }, []);
 
   const loadKyc = useCallback(async () => {
@@ -128,6 +131,29 @@ export default function CompliancePage() {
     }
   }
 
+  async function lockGeofence() {
+    if (
+      !confirm(
+        'Production-lock geofencing? This forces geofencing ON and permanently removes the off switch from the Command Center. Unlocking later requires direct database (service-role) access. Continue?'
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    try {
+      const { error } = await supabase.rpc('admin_lock_geofence');
+      if (error) throw error;
+      setGeofenceLocked(true);
+      setGeofenceEnabled(true);
+      setMessage('Geofencing is now production-locked (forced on).');
+    } catch (err) {
+      setMessage(`Error: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function saveAllowedStates() {
     setBusy(true);
     setMessage(null);
@@ -153,14 +179,14 @@ export default function CompliancePage() {
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0 }}>Geofencing</h3>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: geofenceLocked ? 'not-allowed' : 'pointer' }}>
             <input
               type="checkbox"
               checked={geofenceEnabled}
-              disabled={busy}
+              disabled={busy || geofenceLocked}
               onChange={(e) => toggleGeofence(e.target.checked)}
             />
-            {geofenceEnabled ? 'On' : 'Off'}
+            {geofenceLocked ? 'On (production-locked)' : geofenceEnabled ? 'On' : 'Off'}
           </label>
         </div>
         <p style={{ color: '#9a9aa5', fontSize: 13 }}>
@@ -170,6 +196,22 @@ export default function CompliancePage() {
           local/soft-launch testing; turn back on before any real launch per{' '}
           <code>legal/01-state-restrictions.md</code>.
         </p>
+        {geofenceLocked ? (
+          <p style={{ color: '#5ec269', fontSize: 13 }}>
+            🔒 Production-locked: geofencing is forced on and cannot be disabled from here.
+            Unlocking requires direct database (service-role) access.
+          </p>
+        ) : (
+          <div>
+            <button onClick={lockGeofence} disabled={busy}>
+              🔒 Lock for production (one-way)
+            </button>
+            <p style={{ color: '#9a9aa5', fontSize: 12, marginTop: 6 }}>
+              Before accepting real money, lock this so no single staff login can disable
+              location checks at runtime (go-live audit, Gate D).
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="card">
