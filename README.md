@@ -221,8 +221,9 @@ integrations are pluggable webhook/config points. Full status map in
   locks withdrawals at $550 until the player confirms tax details (Stripe Tax's
   W-9 flow → `confirm_tax_details`), keeping ahead of the $600 1099-MISC threshold.
 - **Geo-fencing (launch whitelist)**: `buy_round` allows buy-ins **only** from the
-  states in `platform_config.allowed_states` (seeded to the launch set **TX, CA, NY,
-  OH, PA**) — every other region raises `REGION_BLOCKED` by default. `blocked_states`
+  states in `platform_config.allowed_states` (seeded to the 7-state launch set
+  **CA, TX, OH, PA, MA, NJ, VA** — see `docs/LAUNCH-PLAN-7-STATES.md`) — every
+  other region raises `REGION_BLOCKED` by default. `blocked_states`
   is an additional denylist override, and unverified locations raise
   `LOCATION_REQUIRED`. Both lists are admin-editable in the command center's
   Compliance page (`admin_update_allowed_states` / `admin_update_blocked_states`); the

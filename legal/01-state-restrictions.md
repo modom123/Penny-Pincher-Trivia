@@ -64,7 +64,8 @@ counsel's per-state answers, not engineering:
    live in `platform_config` and are editable from the command center's Compliance page
    (`admin_update_allowed_states` / `admin_update_blocked_states`) with no app release.
    The build defaults to an **allowlist** (default-block every region), seeded to the
-   launch set TX, CA, NY, OH, PA.
+   7-state launch set CA, TX, OH, PA, MA, NJ, VA (NY deferred — registration/bonding
+   regime; see `docs/LAUNCH-PLAN-7-STATES.md`).
 
 The engineering enforcement exists. What still gates real payments from the general
 public is **counsel's answer on which states to turn on** (the allowlist above is an

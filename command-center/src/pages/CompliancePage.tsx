@@ -177,7 +177,8 @@ export default function CompliancePage() {
         <p style={{ color: '#9a9aa5', fontSize: 13 }}>
           Comma-separated state codes where real-money play is permitted. <strong>This is the primary geo-fence</strong>:
           when non-empty, <em>only</em> these states can buy in — every other region is blocked by default. Launch set per
-          the rollout plan: <code>TX, CA, NY, OH, PA</code>. Leave empty to fall back to blocklist-only. Confirm with
+          the rollout plan (<code>docs/LAUNCH-PLAN-7-STATES.md</code>): <code>CA, TX, OH, PA, MA, NJ, VA</code> — soft launch
+          narrows to <code>TX, CA</code>. Leave empty to fall back to blocklist-only. Confirm with
           counsel (see <code>legal/01-state-restrictions.md</code>).
         </p>
         <textarea rows={2} value={allowedStates} onChange={(e) => setAllowedStates(e.target.value)} />
