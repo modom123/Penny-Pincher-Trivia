@@ -75,6 +75,27 @@ states.]`
 - Live, shrinking-timer tiebreaker; flat entry fee per question (`[OPS: insert amount,
   e.g., $1.00]`) until the tie is resolved.
 
+### No Eligible Winner (applies to all three modes)
+- If every player in a game is eliminated or disqualified before Round 100 and none
+  remain eligible for the grand prize, that game's prize pool is **not** forfeited or
+  retained by the platform.
+- Instead it becomes the starting pool for a new replacement tournament in the same Game
+  Mode, at the same pricing and Prize Distribution scheme.
+- That replacement tournament opens for sign-ups at the next scheduled **weekly rollover
+  slot** (currently Saturday 6:00 PM UTC - `[OPS: confirm final slot before launch;
+  configurable via platform_config 'rollover_schedule']`), rather than immediately.
+- Affected players are notified in-app when this happens.
+- If the replacement tournament also ends with no eligible winner, its pool carries
+  forward again to the following week's slot, and so on until a winner is determined.
+- Each rollover carries forward a **single game's own pool** into one same-format
+  replacement. Pools are never combined across different Game Modes or across multiple
+  void games into a shared jackpot - this was a deliberate design choice; pooling
+  unclaimed prizes platform-wide into one recurring jackpot would look considerably more
+  like a lottery than a skill contest. `[COUNSEL: confirm this rollover mechanism itself
+  doesn't raise its own classification question even without cross-mode pooling - an
+  escalating, unclaimed pool carrying forward on a fixed weekly schedule has some
+  resemblance to a lottery draw even when scoped to one game's own money.]`
+
 ## Odds Disclosure
 
 `[COUNSEL/OPS: odds of winning depend on number of entrants and relative skill
