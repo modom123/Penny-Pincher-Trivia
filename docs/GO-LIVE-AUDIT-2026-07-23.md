@@ -60,10 +60,10 @@ Owner key: 🧑 business/legal decision · 🔧 engineering · 🔑 vendor accou
 
 ### GATE A — Truthful ground truth (do first, this week)
 
-- [ ] 🔧 Correct the Legal Clearance Package v2 to match reality: payments/KYC are
-      Stripe-implemented-but-restricted (Trustly is a plan, not a build), and the
-      §3.11 rollover is designed but not implemented. Never send counsel a
-      description of a system that doesn't exist.
+- [x] 🔧 ~~Correct the Legal Clearance Package v2~~ **DONE 2026-07-23**:
+      `legal/counsel-package/01-product-ground-truth.md` is the code-audited,
+      superseding description (payment rail reality; refund-not-rollover), and
+      the cover memo instructs counsel that it controls over the PDF.
 - [x] 🔧 ~~Fix the orphaned-pool bug~~ **DONE 2026-07-23**
       (`20260723010000_zero_winner_pool_refund_and_geofence_lock.sql`): a
       zero-winner game now refunds its pool pro-rata by each player's cash
@@ -92,7 +92,10 @@ Owner key: 🧑 business/legal decision · 🔧 engineering · 🔑 vendor accou
 ### GATE C — Legal clearance (Phase 1 of the launch plan)
 
 - [ ] 🧑 Engage gaming/gambling counsel with the CORRECTED package; scope = the
-      7 launch states (CA, TX, OH, PA, MA, NJ, VA).
+      7 launch states (CA, TX, OH, PA, MA, NJ, VA). The pre-research package to
+      hand the firm is ready in `legal/counsel-package/` (cover memo, ground
+      truth, 7-state survey draft, pre-answered §3 questions — all marked
+      unverified/[VERIFY] for the firm to confirm and sign).
 - [ ] 🧑 Written skill-vs-gambling determination + per-state clearance in hand.
 - [ ] 🧑 Counsel-approved Terms of Service, Official Rules, Privacy Policy
       (drafts in `legal/02–04` have `[COUNSEL:]` markers ready).
