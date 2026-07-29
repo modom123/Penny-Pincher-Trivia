@@ -8,15 +8,17 @@ should rest on these facts.
 
 ## Corrections to the intake package (material)
 
-1. **Payments run on Stripe, not Trustly.** The PDF describes a completed
-   Trustly migration; **no Trustly integration exists in the codebase**.
-   Deposits (Stripe Checkout), withdrawals (Stripe Connect transfers), and
-   identity verification (Stripe Identity) are all Stripe — and Stripe has
-   classified the account as a restricted business, so the implemented rail is
-   one that has declined to support the product at scale. A replacement rail
-   (Trustly or a specialty real-money-gaming processor) is **planned, not
-   built**. Questions that turn on "Trustly ID" KYC should be answered for the
-   planned architecture and flagged accordingly.
+1. **The payment and KYC provider is Trustly. Stripe is not used.** The Company
+   is not using Stripe — it was rejected after Stripe classified the account as
+   a restricted business. The chosen rail is **Trustly** (bank-to-bank "Pay by
+   Bank" for deposits and withdrawals) with **Trustly ID** providing bank-vetted
+   identity/age verification and OFAC/PEP screening as part of the same
+   bank-linking flow. **Build status (important for an accurate opinion):** the
+   Trustly integration is still being completed and verified in code — legacy
+   Stripe code is being removed and replaced — and must be finished and tested
+   against a live Trustly account before any real-money play. Counsel should
+   answer on the Trustly architecture and treat the integration as in-progress,
+   not yet production-verified.
 2. **The §3.11 "weekly pool rollover" is not built.** As of 2026-07-23 the
    deployed behavior for a game ending with zero eligible winners is a
    **pro-rata refund**: the entire prize pool is returned to the players who
@@ -58,8 +60,8 @@ should rest on these facts.
 | Geographic gating | DB-enforced allowlist: buy-ins permitted ONLY from states on `allowed_states` (currently seeded CA, TX, OH, PA, MA, NJ, VA — an engineering default awaiting counsel), with a denylist override and a hard failure when no verified location exists. Staff-editable without an app release. |
 | Location verification | Server validates a signed anti-spoof location token (Radar, HS256 JWT, expiry + fraud-check enforced) **when the vendor key is installed; the key is not yet installed**, so location is currently self-declared by testers. Public launch is gated on the key. |
 | Geofence lock | One-way production lock: once engaged, location checks cannot be disabled by any staff account (removal requires direct database access). Built 2026-07-23; will be engaged before real-money launch. |
-| Age/identity (KYC) | Withdrawals are blocked until identity is verified and 18+ confirmed. Deposits and play require only an email. Vendor is Stripe Identity today (see correction 1). |
-| Tax | Lifetime winnings tracked per player; withdrawals lock at $550 lifetime pending confirmed tax details. **W-9 collection/1099 filing vendor is an open item** (Stripe Tax was the plan; Stripe is off the table). The current "confirm tax details" flow is a self-attestation stub. |
+| Age/identity (KYC) | Withdrawals are blocked until identity is verified and 18+ confirmed. Deposits and play require only an email. Provider is **Trustly ID** (bank-vetted name/address/DOB + OFAC/PEP screening via the bank-linking flow); integration in progress per correction 1. |
+| Tax | Lifetime winnings tracked per player; withdrawals lock at $550 lifetime pending confirmed tax details. **W-9 collection/1099 filing vendor is an open item** (a dedicated tax e-file vendor must be selected, since Stripe is not used). The current "confirm tax details" flow is a self-attestation stub. |
 | Withdrawal integrity | Two-phase atomic reservation (no double-withdrawal under concurrency); cash-only (promo excluded). |
 | Ledgers | Every deposit, round debit, payout, refund, withdrawal, and staff action is written to append-only ledgers/logs. |
 | Responsible play | **Not built.** No deposit/spend limits, no self-exclusion or cooling-off, no problem-gambling resources. |

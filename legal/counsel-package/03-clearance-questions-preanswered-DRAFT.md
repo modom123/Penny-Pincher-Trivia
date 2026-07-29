@@ -14,8 +14,8 @@ processor is the money transmitter of record and the operator never takes
 possession/control of player funds (for-the-benefit-of accounts); (b) the
 "payee agent" exemption where recognized [VERIFY per state]; (c) obtain MTLs
 (slow/expensive — likely a raise-triggering path). Because the payment rail is
-being re-selected (Stripe restricted the account; Trustly is planned but not
-built), we ask counsel to specify the wallet/custody structure the replacement
+Trustly (the chosen bank-to-bank rail; integration in progress, Stripe not
+used), we ask counsel to specify the wallet/custody structure the Trustly
 integration must implement — this is cheaper to build correctly than to
 retrofit. FinCEN MSB registration follows the same analysis federally [VERIFY].
 
@@ -86,14 +86,15 @@ soft launch is invite-only testers).
 
 ## 3.8 Payment processor approval
 
-**Draft answer (mostly a business fact for counsel's awareness):** Stripe
-restricted the account (this is why the PDF's Trustly narrative exists — see
-doc 01 corrections). Before any volume: obtain the replacement processor's
-**written** confirmation that this exact product is within its acceptable-use
-policy, and have counsel's opinion letter available for underwriting. Counsel:
-advise whether a specialty RMG processor with gaming underwriting is preferable
-to Trustly for this risk profile, and what the custody structure (3.1) implies
-for the choice.
+**Draft answer (mostly a business fact for counsel's awareness):** The Company
+uses **Trustly**, not Stripe — Stripe restricted the account, which is why the
+product moved to a bank-to-bank rail. Before any volume: obtain **written**
+confirmation from Trustly that this exact product is within its acceptable-use
+policy (the same restricted-business risk that hit Stripe can hit a second
+processor), and have counsel's opinion letter available for that underwriting.
+Counsel: advise whether Trustly or a specialty RMG processor with established
+gaming underwriting better fits this risk profile, and what the custody
+structure (3.1) implies for the choice.
 
 ## 3.9 Responsible-play requirements
 
